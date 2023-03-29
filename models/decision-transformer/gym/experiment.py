@@ -75,7 +75,7 @@ def load_data(main_folder_path, goal_position):
                 positions.append(np.array([x, y, z]))
 
         model_name = 'vit_base_patch16_224'
-        model = timm.create_model(model_name, pretrained=True)
+        model = timm.create_model(model_name, pretrained=True, features_only=True)
         model.eval()
 
         preprocess = transforms.Compose([
