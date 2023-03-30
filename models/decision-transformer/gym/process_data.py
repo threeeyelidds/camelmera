@@ -79,7 +79,7 @@ def load_fish_depth(main_folder_path, goal_position):
                 depth_path = os.path.join(depth_folder_path, depths[idx])
                 depth = Image.open(depth_path)
 
-                input_tensor = preprocess(img).concatenate(preprocess(depth), dim=0)
+                input_tensor = torch.concat((preprocess(img),preprocess(depth)), dim=0)
                 input_batch = input_tensor.unsqueeze(0)
                 with torch.no_grad():
                     embedding = model(input_batch)
