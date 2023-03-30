@@ -95,10 +95,10 @@ def load_fish_depth(main_folder_path, goal_position):
                 depth_batch = depth_tensor.unsqueeze(0)
                 print(img_batch.shape, depth_batch.shape)
                 with torch.no_grad():
-                    img_embedding = model(img_batch)
-                    img_embedding = img_embedding.squeeze().numpy()
-                    depth_embedding = model(depth_batch)
-                    depth_embedding = depth_embedding.squeeze().numpy()
+                    img_embedding = model.forward_features(img_batch) # last_hidden_state of the ViT model
+                    img_embedding = img_embedding.reshape(-1).numpy() # shape: (151296,)
+                    depth_embedding = model.forward_features(depth_batch) # last_hidden_state of the ViT model
+                    depth_embedding = depth_embedding.reshape(-1).numpy() # shape: (151296,)
 
                 state = np.hstack((img_embedding,depth_embedding, positions[idx]))  # Stack the embeddings and positions horizontally
                 states.append(state)
