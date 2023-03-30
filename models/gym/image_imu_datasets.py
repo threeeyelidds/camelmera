@@ -167,7 +167,7 @@ class IMU_Image_Dataset(Dataset):
             vit_model.eval()
 
 
-            for idx, img_name in enumerate(sorted(os.listdir(image_folder_path))[:5]):
+            for idx, img_name in enumerate(sorted(os.listdir(image_folder_path))):
                 print(idx, img_name)
                 if img_name.endswith('.png'):
                     img_path = os.path.join(image_folder_path, img_name)
