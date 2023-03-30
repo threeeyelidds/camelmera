@@ -51,11 +51,16 @@ def load_fish_depth(main_folder_path, goal_position):
         model = timm.create_model(model_name, pretrained=True)
         model.eval()
 
-        preprocess = transforms.Compose([
+        preprocess_image = transforms.Compose([
             transforms.Resize(224),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+        process_depth = transforms.Compose([
+            transforms.Resize(224),
+            transforms.CenterCrop(224),
+            transforms.ToTensor()
         ])
 
         image_folder_path = os.path.join(folder_path, 'image_lcam_fish')
@@ -75,18 +80,27 @@ def load_fish_depth(main_folder_path, goal_position):
         for idx in range(len(images)):
             if images[idx].endswith('.png'):
                 img_path = os.path.join(image_folder_path, images[idx])
+                # (1000, 1000)
                 img = Image.open(img_path)
                 depth_path = os.path.join(depth_folder_path, depths[idx])
+                # (1000, 1000)
                 depth = Image.open(depth_path)
 
-                input_tensor = torch.concat((preprocess(img),preprocess(depth)), dim=0)
-                input_batch = input_tensor.unsqueeze(0)
+                img_tensor = preprocess_image(img)
+                depth_tensor = process_depth(depth)
+                # extract the first three channels
+                depth_tensor = depth_tensor[:3, :, :]
+                
+                img_batch = img_tensor.unsqueeze(0)
+                depth_batch = depth_tensor.unsqueeze(0)
+                print(img_batch.shape, depth_batch.shape)
                 with torch.no_grad():
-                    embedding = model(input_batch)
+                    img_embedding = model(img_batch)
+                    img_embedding = img_embedding.squeeze().numpy()
+                    depth_embedding = model(depth_batch)
+                    depth_embedding = depth_embedding.squeeze().numpy()
 
-                embedding = embedding.squeeze().numpy()
-
-                state = np.hstack((embedding, positions[idx]))  # Stack the embeddings and positions horizontally
+                state = np.hstack((img_embedding,depth_embedding, positions[idx]))  # Stack the embeddings and positions horizontally
                 states.append(state)
 
                 if idx > 0:
