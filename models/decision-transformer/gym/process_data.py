@@ -1,19 +1,8 @@
-import gym
-import numpy as np
-import torch
-import wandb
-
 import argparse
 import pickle
 import random
 import sys
 import pickle
-
-from decision_transformer.evaluation.evaluate_episodes import evaluate_episode, evaluate_episode_rtg
-from decision_transformer.models.decision_transformer import DecisionTransformer
-from decision_transformer.training.seq_trainer import SequenceTrainer
-
-
 import numpy as np
 import random
 
@@ -26,7 +15,10 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-
+'''
+directory structure:
+-main_folder_path-t1-depth, image, pose, imu
+'''
 def load_fish_depth(main_folder_path, goal_position):
     all_datasets = []
 
@@ -41,10 +33,11 @@ def load_fish_depth(main_folder_path, goal_position):
         rewards = []
         positions = []
         
-        print(f'Processing folder: {folder_path}') 
+        print(f'Processing: {folder_path}') 
 
         pose_file_path = os.path.join(folder_path, 'pose_lcam_front.txt')
         if not os.path.exists(pose_file_path):
+            print("Pose file not found")
             continue
 
         with open(pose_file_path) as f:
@@ -52,6 +45,7 @@ def load_fish_depth(main_folder_path, goal_position):
                 values = line.strip().split()
                 x, y, z = map(float, values[:3])
                 positions.append(np.array([x, y, z]))
+        print(positions[0], positions[-1])
 
         model_name = 'vit_base_patch16_224'
         model = timm.create_model(model_name, pretrained=True)
@@ -66,15 +60,18 @@ def load_fish_depth(main_folder_path, goal_position):
 
         image_folder_path = os.path.join(folder_path, 'image_lcam_fish')
         if not os.path.exists(image_folder_path):
+            print("Image folder not found")
             continue
-        depth_folder_path = os.path.join(folder_path, 'depth_lcam_fish')
+        depth_folder_path = os.path.join(folder_path, 'depth_rcam_fish')
         if not os.path.exists(depth_folder_path):
+            print("Depth folder not found")
             continue
 
         positions = np.array(positions)  # Convert positions to a numpy array
 
         images = sorted(os.listdir(image_folder_path))
         depths = sorted(os.listdir(depth_folder_path))
+        print(len(images), len(depths))
         for idx in range(len(images)):
             if images[idx].endswith('.png'):
                 img_path = os.path.join(image_folder_path, images[idx])
