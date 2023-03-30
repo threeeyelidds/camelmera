@@ -7,24 +7,29 @@ import argparse
 import pickle
 import random
 import sys
-import pickle
 
 from decision_transformer.evaluation.evaluate_episodes import evaluate_episode, evaluate_episode_rtg
 from decision_transformer.models.decision_transformer import DecisionTransformer
 from decision_transformer.training.seq_trainer import SequenceTrainer
 
-
-import numpy as np
-import random
-
 import os
-import numpy as np
 from PIL import Image
-import torch
 import timm
 from torchvision import transforms
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
+from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.callbacks import EvalCallback
+
+from gym.envs.registration import register
+from decision_transformer.envs.custom_env import AirSimDroneEnv
+
+register(
+    id="airsim-drone-sample-v0", entry_point="decision_transformer.envs.custom_env:AirSimDroneEnv",
+)
+
 
 def save_preprocessed_data(dataset, file_path):
     with open(file_path, 'wb') as f:
@@ -146,22 +151,39 @@ def discount_cumsum(x, gamma):
     return discount_cumsum
 
 main_folder_path = '/media/jeffrey/2TB HHD/AbandonedCableExposure/Data_easy'
-goal_position = '5,5,5'
-saved_folder_path = '/media/jeffrey/2TB HHD/Camelmera'
+goal_position = '1.110658950805664062e+02 7.379938507080078125e+01 -4.763419151306152344e+00' # One point in P000 Easy trajectory
+saved_folder_path = '/media/jeffrey/2TB HHD/camelmera'
 preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_data_v0.pkl')
+
+# env = DummyVecEnv(
+#     [
+#         lambda: Monitor(
+#             gym.make(
+#                 'airsim-drone-sample-v0',
+#                 ip_address="127.0.0.1",
+#                 step_length=0.25,
+#                 image_shape=(84, 84, 1),
+#             )
+#         )
+#     ]
+# )
+
+# Wrap env as VecTransposeImage to allow SB to handle frame observations
+# env = VecTransposeImage(env)
 
 
 def experiment(
         exp_prefix,
         variant,
 ):
+    print(torch.__version__)
+    print(torch.version.cuda)
     device = variant.get('device', 'cuda')
     log_to_wandb = variant.get('log_to_wandb', False)
 
     max_ep_len = 1000
     env_targets = [5000, 2500]
     scale = 1000.
-
 
     goal_position = np.array([10, 10, 10])  
 
@@ -192,17 +214,17 @@ def experiment(
 
     num_timesteps = sum(traj_lens)
     # Print the first 100 rewards from the dataset
-    num_rewards_to_print = 10
-    rewards_printed = 0
-    for path in trajectories:
-        for reward in path['rewards']:
-            if rewards_printed < num_rewards_to_print:
-                print(f"Reward {rewards_printed + 1}: {reward}")
-                rewards_printed += 1
-            else:
-                break
-        if rewards_printed >= num_rewards_to_print:
-            break
+    # num_rewards_to_print = 10
+    # rewards_printed = 0
+    # for path in trajectories:
+    #     for reward in path['rewards']:
+    #         if rewards_printed < num_rewards_to_print:
+    #             print(f"Reward {rewards_printed + 1}: {reward}")
+    #             rewards_printed += 1
+    #         else:
+    #             break
+        # if rewards_printed >= num_rewards_to_print:
+        #     break
 
     # Print the sum of rewards and trajectory length for each trajectory
     for i, path in enumerate(trajectories):
@@ -355,8 +377,9 @@ def experiment(
             get_batch=get_batch,
             scheduler=scheduler,
             loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2),
-            eval_fns=[eval_episodes(tar) for tar in env_targets],
+            # eval_fns= [eval_episodes(tar) for tar in env_targets],
         )
+
     # # Generate a list of initial states from the dataset
     # initial_states = [traj['observations'][0] for traj in trajectories]
 
@@ -370,6 +393,36 @@ def experiment(
 
     # # Visualize the trajectories
     # visualize_trajectories(trajectories, model_trajectories)
+
+    # Train the model using the trainer.train method
+    trainer.train(variant['num_epochs'])
+
+
+    # # Load the saved model
+    # loaded_model = DecisionTransformer(
+    #         state_dim=state_dim,
+    #         act_dim=act_dim,
+    #         max_length=K,
+    #         max_ep_len=max_ep_len,
+    #         hidden_size=variant['embed_dim'],
+    #         n_layer=variant['n_layer'],
+    #         n_head=variant['n_head'],
+    #         n_inner=4*variant['embed_dim'],
+    #         activation_function=variant['activation_function'],
+    #         n_positions=1024,
+    #         resid_pdrop=variant['dropout'],
+    #         attn_pdrop=variant['dropout'],
+    #     )
+    # loaded_model.load_state_dict(torch.load("trained_model.pt"))
+    # loaded_model.to(device=device)
+
+    # Evaluate the loaded model using the modified evaluation function
+    # for target_rew in env_targets:
+    #     eval_fn = eval_episodes(target_rew)
+    #     eval_results = eval_fn(loaded_model)
+    #     print(f"Evaluation results for target {target_rew}: {eval_results}")
+
+
 
     if log_to_wandb:
         wandb.init(

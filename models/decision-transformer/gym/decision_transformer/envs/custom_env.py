@@ -1,4 +1,3 @@
-import setup_path
 import airsim
 import numpy as np
 import math
@@ -7,13 +6,36 @@ from argparse import ArgumentParser
 
 import gym
 from gym import spaces
-from airgym.envs.airsim_env import AirSimEnv
 from PIL import Image
 
 import torch
 import timm
 from torchvision import transforms
 
+class AirSimEnv(gym.Env):
+    metadata = {"render.modes": ["rgb_array"]}
+
+    def __init__(self, image_shape):
+        self.observation_space = spaces.Box(0, 255, shape=image_shape, dtype=np.uint8)
+        self.viewer = None
+
+    def __del__(self):
+        raise NotImplementedError()
+
+    def _get_obs(self):
+        raise NotImplementedError()
+
+    def _compute_reward(self):
+        raise NotImplementedError()
+
+    def close(self):
+        raise NotImplementedError()
+
+    def step(self, action):
+        raise NotImplementedError()
+
+    def render(self):
+        return self._get_obs()
 
 class AirSimDroneEnv(AirSimEnv):
     def __init__(self, ip_address, step_length, image_shape):
@@ -37,8 +59,8 @@ class AirSimDroneEnv(AirSimEnv):
 
         # Initialize the pretrained Vision Transformer
         model_name = 'vit_base_patch16_224'
-        model = timm.create_model(model_name, pretrained=True)
-        model.eval()
+        self.model = timm.create_model(model_name, pretrained=True)
+        self.model.eval()
 
     def __del__(self):
         self.drone.reset()
@@ -52,39 +74,47 @@ class AirSimDroneEnv(AirSimEnv):
         self.drone.moveToPositionAsync(-0.55265, -31.9786, -19.0225, 10).join()
         self.drone.moveByVelocityAsync(1, -0.67, -0.8, 5).join()
 
-    def transform_obs(self, responses):
-        img1d = np.array(responses[0].image_data_float, dtype=np.float)
-        img1d = 255 / np.maximum(np.ones(img1d.size), img1d)
-        img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
-
-
 
         image = Image.fromarray(img2d)
         im_final = np.array(image.resize((84, 84)).convert("L"))
 
         return im_final.reshape([84, 84, 1])
-
     def _get_obs(self):
         # Get the images
         responses = self.drone.simGetImages([self.image_request, self.left_camera_request])
 
-        # Get the left camera image and transform it
-        left_camera_image = np.array(
-            Image.fromarray(
-                np.frombuffer(responses[1].image_data_uint8, dtype=np.uint8).reshape(
-                    responses[1].height, responses[1].width, 4
-                )[:, :, 0:3]
-            ).resize((84, 84))
-        )
+        # Converting the raw image data received from the left camera into a NumPy array and then extracting the RGB channels from it
+        left_camera_image = np.frombuffer(responses[1].image_data_uint8, dtype=np.uint8)
+        left_camera_image = left_camera_image.reshape(responses[1].height, responses[1].width, 4)[:, :, :3]
 
-        # Concatenate the images and the agent's position
+        # Preprocess the image
+        preprocess = transforms.Compose([
+            transforms.Resize(224),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+        img = Image.fromarray(left_camera_image)
+        input_tensor = preprocess(img)
+        input_batch = input_tensor.unsqueeze(0)
+
+
+
+        # Extract features from the image using the ViT model
+        with torch.no_grad():
+            embedding = self.model(input_batch)
+
+        embedding = embedding.squeeze().numpy()
+
+        # Concatenate the embeddings and the agent's position
         position = np.array([
             self.state["position"].x_val,
             self.state["position"].y_val,
             self.state["position"].z_val
         ])
         observation = {
-            "left_camera_image": left_camera_image,
+            "embedding": np.hstack((embedding, position)),
             "position": position
         }
 
