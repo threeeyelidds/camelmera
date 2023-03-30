@@ -96,6 +96,7 @@ def load_fish_depth(main_folder_path, goal_position):
                 print(img_batch.shape, depth_batch.shape)
                 with torch.no_grad():
                     img_embedding = model.forward_features(img_batch) # last_hidden_state of the ViT model
+                    # (197,768)
                     img_embedding = img_embedding.reshape(-1).numpy() # shape: (151296,)
                     depth_embedding = model.forward_features(depth_batch) # last_hidden_state of the ViT model
                     depth_embedding = depth_embedding.reshape(-1).numpy() # shape: (151296,)
