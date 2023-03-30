@@ -18,13 +18,14 @@ import timm
 from torchvision import transforms
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback
 
 from gym.envs.registration import register
-from decision_transformer.envs.custom_env import AirSimDroneEnv
+# from decision_transformer.envs.custom_env import AirSimDroneEnv
 
 register(
     id="airsim-drone-sample-v0", entry_point="decision_transformer.envs.custom_env:AirSimDroneEnv",
@@ -122,7 +123,7 @@ def load_data(main_folder_path, goal_position):
             'observations': np.array(states),
             'actions': np.array(actions),
             'rewards': np.array(rewards)
-        }       
+        }
 
 
         all_datasets.append(dataset)
@@ -179,7 +180,7 @@ def experiment(
     print(torch.__version__)
     print(torch.version.cuda)
     device = variant.get('device', 'cuda')
-    log_to_wandb = variant.get('log_to_wandb', False)
+    log_to_wandb = variant.get('log_to_wandb', True)
 
     max_ep_len = 1000
     env_targets = [5000, 2500]
@@ -269,8 +270,9 @@ def experiment(
         s, a, r, d, rtg, timesteps, mask = [], [], [], [], [], [], []
         for i in range(batch_size):
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
+            #print ("trajectory reward shape: ", traj['rewards'].shape[0])
             si = random.randint(0, traj['rewards'].shape[0] - batch_size)
-            # si = 0
+            #si = 0
             # print('actions',traj['actions'].shape[0] - 1)
             # print('observations',traj['observations'].shape[0] - 1)
             # print('rewards',traj['rewards'].shape[0] - 1)
@@ -288,6 +290,7 @@ def experiment(
             #     d.append(traj['dones'][si:si + max_len].reshape(1, -1))
             timesteps.append(np.arange(si, si + s[-1].shape[1]).reshape(1, -1))
             timesteps[-1][timesteps[-1] >= max_ep_len] = max_ep_len-1  # padding cutoff
+
             rtg.append(discount_cumsum(traj['rewards'][si:], gamma=1.)[:s[-1].shape[1] + 1].reshape(1, -1, 1))
             if rtg[-1].shape[1] <= s[-1].shape[1]:
                 rtg[-1] = np.concatenate([rtg[-1], np.zeros((1, 1, 1))], axis=1)
@@ -395,9 +398,13 @@ def experiment(
     # visualize_trajectories(trajectories, model_trajectories)
 
     # Train the model using the trainer.train method
-    trainer.train(variant['num_epochs'])
+    for iter in range(variant['max_iters']):
+        outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+        if log_to_wandb:
+            wandb.log(outputs)
 
 
+    torch.save(model.state_dict(), "trained_model.pt")
     # # Load the saved model
     # loaded_model = DecisionTransformer(
     #         state_dim=state_dim,
@@ -433,10 +440,7 @@ def experiment(
         )
         # wandb.watch(model)  # wandb has some bug
 
-    for iter in range(variant['max_iters']):
-        outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-        if log_to_wandb:
-            wandb.log(outputs)
+
 
 def visualize_trajectories(dataset_trajectories, model_trajectories, title="Trajectories"):
     fig = plt.figure(figsize=(10, 10))
