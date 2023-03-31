@@ -425,8 +425,8 @@ def experiment(
         # print("Iteration:", iter+1, "Loss:", outputs['loss'])
         # if log_to_wandb:
         #     wandb.log(outputs)
+        torch.save(model.state_dict(), f"{model_name}_{iter}.pt")
 
-    torch.save(model.state_dict(), f"{model_name}_{iter}.pt")
     # Load the saved model
     loaded_model = DecisionTransformer(
             state_dim=state_dim,
