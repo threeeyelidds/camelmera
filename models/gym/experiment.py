@@ -21,6 +21,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 
+
+model_name = "trained_model_image_depth_imu_pos"
+
 def save_preprocessed_data(dataset, file_path):
     with open(file_path, 'wb') as f:
         pickle.dump(dataset, f)
@@ -419,7 +422,7 @@ def experiment(
         # if log_to_wandb:
         #     wandb.log(outputs)
 
-    torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
+    torch.save(model.state_dict(), f"{model_name}_{iter}.pt")
     # Load the saved model
     loaded_model = DecisionTransformer(
             state_dim=state_dim,
@@ -438,7 +441,7 @@ def experiment(
     current_directory = os.getcwd()
     print("Current working directory:", current_directory)    
 
-    loaded_model.load_state_dict(torch.load('trained_model_image_depth_imu_pos.pt'))
+    loaded_model.load_state_dict(torch.load(f'{model_name}_{iter}.pt'))
     loaded_model.to(device=device)
     print ("model loaded")
     # Evaluate the loaded model using the modified evaluation function
