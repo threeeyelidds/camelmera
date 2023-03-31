@@ -1,4 +1,3 @@
-import gym
 import numpy as np
 import torch
 import wandb
@@ -17,24 +16,10 @@ from PIL import Image
 import timm
 from torchvision import transforms
 
-
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.callbacks import EvalCallback
-
-from gym.envs.registration import register
-
 # Graph imports
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
-# from decision_transformer.envs.custom_env import AirSimDroneEnv
-
-register(
-    id="airsim-drone-sample-v0", entry_point="decision_transformer.envs.custom_env:AirSimDroneEnv",
-)
-
 
 def save_preprocessed_data(dataset, file_path):
     with open(file_path, 'wb') as f:
@@ -156,28 +141,14 @@ def discount_cumsum(x, gamma):
         
     return discount_cumsum
 
-main_folder_path = '/media/jeffrey/2TB HHD/AbandonedCableExposure/Data_easy'
+p_number = 1
 goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
-saved_folder_path = '/media/jeffrey/2TB HHD/camelmera'
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v006.pkl')
-preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v001.pkl')
-preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v002.pkl')
-# env = DummyVecEnv(
-#     [
-#         lambda: Monitor(
-#             gym.make(
-#                 'airsim-drone-sample-v0',
-#                 ip_address="127.0.0.1",
-#                 step_length=0.25,
-#                 image_shape=(84, 84, 1),
-#             )
-#         )
-#     ]
-# )
 
-# Wrap env as VecTransposeImage to allow SB to handle frame observations
-# env = VecTransposeImage(env)
+saved_folder_path = '/content/drive/MyDrive/tartanairv2filtered/'
 
+preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_image_depth_pos_imu_v006.pkl')
+preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_data_v001.pkl')
+preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_data_v002.pkl')
 
 def experiment(
         exp_prefix,
@@ -193,19 +164,14 @@ def experiment(
 
     goal_position = np.array([10, 10, 10])  
 
-    # trajectories = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file)
 
-    # Get trajectory from a single dictionary
-
-    
-
-    trajectory6 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file)
-
-    trajectory1 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file1)
-    trajectory2 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file2)
-
+    # TODO: Get trajectory from a single dictionary
+    trajectory6 = get_preprocessed_data("", goal_position, preprocessed_data_file)
+    trajectory1 = get_preprocessed_data("", goal_position, preprocessed_data_file1)
+    trajectory2 = get_preprocessed_data("", goal_position, preprocessed_data_file2)
+    # TODO:
     trajectories = [trajectory1[0], trajectory2[0], trajectory6[0]]
-    
+
     print("Number of trajs", len(trajectories))
     print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
     print("number of rewards in trajectories", len(trajectories[0]['rewards']), len(trajectories[1]['rewards']), len(trajectories[2]['rewards']))
@@ -431,11 +397,11 @@ def experiment(
     # Train the model using the trainer.train method
     print("Starting training...")
     for iter in range(variant['max_iters']):
+        print(f"Starting training iter={iter}...")
         outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-        print("Iteration:", iter+1, "Loss:", outputs['loss'])
-        if log_to_wandb:
-            wandb.log(outputs)
-
+        # print("Iteration:", iter+1, "Loss:", outputs['loss'])
+        # if log_to_wandb:
+        #     wandb.log(outputs)
 
     torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
     # Load the saved model
@@ -583,7 +549,7 @@ if __name__ == '__main__':
     # parser.add_argument('--mode', type=str, default='normal')  # normal for standard setting, delayed for sparse
     parser.add_argument('--K', type=int, default=100)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=1024)
     # parser.add_argument('--model_type', type=str, default='dt')  # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--embed_dim', type=int, default=128)
     parser.add_argument('--n_layer', type=int, default=3)
@@ -595,7 +561,7 @@ if __name__ == '__main__':
     parser.add_argument('--warmup_steps', type=int, default=10000)
     parser.add_argument('--num_eval_episodes', type=int, default=100)
     parser.add_argument('--max_iters', type=int, default=10)
-    parser.add_argument('--num_steps_per_iter', type=int, default=1000)
+    parser.add_argument('--num_steps_per_iter', type=int, default=100)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--log_to_wandb', '-w', type=bool, default=False)
     

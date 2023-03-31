@@ -30,7 +30,7 @@ class Trainer:
         for i in range(num_steps):
             train_loss = self.train_step()
             # print a step every 100 steps
-            if i % 100 == 0: 
+            if i % 10 == 0: 
                 print("Took a step", i)
             train_losses.append(train_loss)
             if self.scheduler is not None:

@@ -62,7 +62,7 @@ class DecisionTransformer(TrajectoryModel):
 
         # embed each modality with a different head
         state_embeddings = self.embed_state1(states)
-        state_embeddings = self.embed_state2(states)
+        state_embeddings = self.embed_state2(state_embeddings)
         action_embeddings = self.embed_action(actions)
         returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
