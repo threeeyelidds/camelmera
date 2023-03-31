@@ -4,7 +4,7 @@
 import os
 import numpy as np
 
-data_dir = './data'
+data_dir = '/content/drive/MyDrive/tartanairv2filtered'
 
 def get_all_imu_path(imu_dir):
     acc_path = os.path.join(imu_dir, "acc.npy") # accelerometer, three-dimensional space
@@ -51,7 +51,7 @@ def get_imu_data(cam_time, imu_time, imu_all_data):
             max_lenth = result.shape[1]
         imu_data_list.append(result)
 
-    print("imu_data_list len:", len(imu_data_list))
+    # print("imu_data_list len:", len(imu_data_list))
 
     # Determine the number of arrays in the list
     num_arrays = len(imu_data_list)
@@ -69,17 +69,17 @@ def get_imu_data(cam_time, imu_time, imu_all_data):
 
     # Print the result and its shape
     # print("Resulting array:\n", result_array)
-    print("Shape of the resulting array:", result_array.shape)
+    # print("Shape of the resulting array:", result_array.shape)
 
     imu_data_list = result_array  # Convert imu_data_list to a numpy array
-    print("imu_data_list.shape:", imu_data_list.shape)
+    # print("imu_data_list.shape:", imu_data_list.shape)
     return imu_data_list
 
 for folder in os.listdir(data_dir):
     trajectory_folder_path = os.path.join(data_dir, folder)
     if not os.path.isdir(trajectory_folder_path):
         continue
-    print(f'Processing folder: {trajectory_folder_path}')
+    print(f'\nProcessing folder: {trajectory_folder_path}')
 
     imu_dir = os.path.join(trajectory_folder_path, "imu")
     all_imu_path = get_all_imu_path(imu_dir)
@@ -94,6 +94,8 @@ for folder in os.listdir(data_dir):
 
     imu_all_data = []
     imu_data_len = -1
+
+    # print("all_imu_path:", all_imu_path)
 
     for imu_path in all_imu_path:
         if not os.path.exists(imu_path):
@@ -110,13 +112,13 @@ for folder in os.listdir(data_dir):
     cam_time = np.load(cam_time_path)
     imu_time = np.load(imu_time_path)
 
-    print("cam_time.shape:", cam_time.shape)
-    print("imu_time.shape:", imu_time.shape)
+    # print("cam_time.shape:", cam_time.shape)
+    # print("imu_time.shape:", imu_time.shape)
 
     imu_data_list = get_imu_data(cam_time, imu_time, imu_all_data)
 
     flatten_imu_data = imu_data_list.reshape(imu_data_list.shape[0], -1)
 
-    print("flatten_imu_data.shape:", flatten_imu_data.shape)
+    print(f"saving to {trajectory_folder_path}/imu.npy... flatten_imu_data.shape:", flatten_imu_data.shape)
 
     np.save(os.path.join(trajectory_folder_path, "imu.npy"), flatten_imu_data) # (image_number, 264)
