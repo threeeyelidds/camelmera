@@ -1,11 +1,4 @@
-import argparse
 import pickle
-import random
-import sys
-import pickle
-import numpy as np
-import random
-
 import os
 import numpy as np
 from PIL import Image
