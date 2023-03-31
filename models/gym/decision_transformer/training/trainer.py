@@ -26,7 +26,7 @@ class Trainer:
         train_start = time.time()
 
         self.model.train()
-        print("number of steps per iteration: ", num_steps)
+        # print("number of steps per iteration: ", num_steps)
         for i in range(num_steps):
             train_loss = self.train_step()
             # print a step every 100 steps

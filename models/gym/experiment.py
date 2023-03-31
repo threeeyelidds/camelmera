@@ -283,7 +283,7 @@ def experiment(
     # used to reweight sampling so we sample according to timesteps instead of trajectories
     p_sample = traj_lens[sorted_inds] / sum(traj_lens[sorted_inds])
 
-    def get_batch(batch_size=256, max_len=K):
+    def get_batch(batch_size=512, max_len=K):
         batch_inds = np.random.choice(
             np.arange(num_trajectories),
             size=batch_size,
@@ -408,7 +408,7 @@ def experiment(
             batch_size=batch_size,
             get_batch=get_batch,
             scheduler=scheduler,
-            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2),
+            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2)/torch.mean(a**2),
             # eval_fns= [eval_episodes(tar) for tar in env_targets],
         )
 
@@ -432,7 +432,7 @@ def experiment(
     print("Starting training...")
     for iter in range(variant['max_iters']):
         outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-        print("Iteration:", iter+1, "Loss:", outputs['loss'])
+        # print("Iteration:", iter+1, "Loss:", outputs['loss'])
         if log_to_wandb:
             wandb.log(outputs)
 
