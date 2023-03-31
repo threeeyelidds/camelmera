@@ -39,7 +39,8 @@ class DecisionTransformer(TrajectoryModel):
 
         self.embed_timestep = nn.Embedding(max_ep_len, hidden_size)
         self.embed_return = torch.nn.Linear(1, hidden_size)
-        self.embed_state = torch.nn.Linear(self.state_dim, hidden_size)
+        self.embed_state1 = torch.nn.Linear(self.state_dim, 1000)
+        self.embed_state2 = torch.nn.Linear(1000, hidden_size)
         self.embed_action = torch.nn.Linear(self.act_dim, hidden_size)
 
         self.embed_ln = nn.LayerNorm(hidden_size)
@@ -60,7 +61,8 @@ class DecisionTransformer(TrajectoryModel):
             attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
 
         # embed each modality with a different head
-        state_embeddings = self.embed_state(states)
+        state_embeddings = self.embed_state1(states)
+        state_embeddings = self.embed_state2(states)
         action_embeddings = self.embed_action(actions)
         returns_embeddings = self.embed_return(returns_to_go)
         time_embeddings = self.embed_timestep(timesteps)
