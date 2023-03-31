@@ -204,7 +204,20 @@ def experiment(
     trajectory1 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file1)
     trajectory2 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file2)
 
-    trajectories = [trajectory1[0], trajectory2[0], trajectory6[0]]
+    def normalize_data(data):
+        normalized_data = {}
+        
+        for key in ['observations', 'actions', 'rewards']:
+            values = np.array(data[key])
+            normalized_values = (values - np.mean(values, axis=0, keepdims=True)) / np.std(values, axis=0, keepdims=True)
+            normalized_data[key] = normalized_values.tolist()
+        
+        return normalized_data
+
+   
+    
+
+    trajectories = [normalize_data(trajectory1[0]), normalize_data(trajectory2[0]), normalize_data(trajectory6[0])]
     
     print("Number of trajs", len(trajectories))
     print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
@@ -583,7 +596,7 @@ if __name__ == '__main__':
     # parser.add_argument('--mode', type=str, default='normal')  # normal for standard setting, delayed for sparse
     parser.add_argument('--K', type=int, default=100)
     parser.add_argument('--pct_traj', type=float, default=1.)
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=128)
     # parser.add_argument('--model_type', type=str, default='dt')  # dt for decision transformer, bc for behavior cloning
     parser.add_argument('--embed_dim', type=int, default=128)
     parser.add_argument('--n_layer', type=int, default=3)
