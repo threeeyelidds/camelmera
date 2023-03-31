@@ -207,17 +207,23 @@ def experiment(
     def normalize_data(data):
         normalized_data = {}
         
-        for key in ['observations', 'actions', 'rewards']:
-            values = np.array(data[key])
-            normalized_values = (values - np.mean(values, axis=0, keepdims=True)) / np.std(values, axis=0, keepdims=True)
-            normalized_data[key] = normalized_values.tolist()
+        observation = data[0]['observations']
+        action = data[0]['actions']
+        reward = data[0]['rewards']
+
+
+        normalized_observation = (observation-np.mean(observation,axis=0,keepdims=True))/np.std(observation,axis=0,keepdims=True)
+        normalized_action = (action-np.mean(action,axis=0,keepdims=True))/np.std(action,axis=0,keepdims=True)
+        normalized_reward = (reward-np.mean(reward,axis=0,keepdims=True))/np.std(reward,axis=0,keepdims=True)
+
+        normalized_data = {'observations': normalized_observation, 'actions': normalized_action, 'rewards': normalized_reward}
         
         return normalized_data
 
    
     
 
-    trajectories = [normalize_data(trajectory1[0]), normalize_data(trajectory2[0]), normalize_data(trajectory6[0])]
+    trajectories = [normalize_data(trajectory1), normalize_data(trajectory2), normalize_data(trajectory6)]
     
     print("Number of trajs", len(trajectories))
     print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
