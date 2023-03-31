@@ -157,10 +157,11 @@ def discount_cumsum(x, gamma):
     return discount_cumsum
 
 main_folder_path = '/media/jeffrey/2TB HHD/AbandonedCableExposure/Data_easy'
-goal_position = '1.110658950805664062e+02 7.379938507080078125e+01 -4.763419151306152344e+00' # One point in P000 Easy trajectory
+goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
 saved_folder_path = '/media/jeffrey/2TB HHD/camelmera'
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_data_v0.pkl')
-
+preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v006.pkl')
+preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v001.pkl')
+preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v002.pkl')
 # env = DummyVecEnv(
 #     [
 #         lambda: Monitor(
@@ -192,9 +193,23 @@ def experiment(
 
     goal_position = np.array([10, 10, 10])  
 
-    trajectories = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file)
+    # trajectories = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file)
 
+    # Get trajectory from a single dictionary
 
+    
+
+    trajectory6 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file)
+
+    trajectory1 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file1)
+    trajectory2 = get_preprocessed_data(main_folder_path, goal_position, preprocessed_data_file2)
+
+    trajectories = [trajectory1[0], trajectory2[0], trajectory6[0]]
+    
+    print("Number of trajs", len(trajectories))
+    print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
+    print("number of rewards in trajectories", len(trajectories[0]['rewards']), len(trajectories[1]['rewards']), len(trajectories[2]['rewards']))
+    print("the shape of observations in trajectories", trajectories[0]['observations'].shape, trajectories[1]['observations'].shape, trajectories[2]['observations'].shape)
     if not trajectories:
         print("No trajectories found in the given folder.")
     else:
@@ -281,8 +296,8 @@ def experiment(
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
             #print ("trajectory reward shape: ", traj['rewards'].shape[0])
             # print (traj['rewards'].shape[0])
-            # si = random.randint(0, traj['rewards'].shape[0] - batch_size)
-            si = 0
+            si = random.randint(0, traj['rewards'].shape[0] - K)
+            # si = 0
             # print('actions',traj['actions'].shape[0] - 1)
             # print('observations',traj['observations'].shape[0] - 1)
             # print('rewards',traj['rewards'].shape[0] - 1)
@@ -307,6 +322,10 @@ def experiment(
 
             # padding and state + reward normalization
             tlen = s[-1].shape[1]
+
+            # for i, arr in enumerate(a):
+            #     print(f"Array at batch_number {i} has shape {arr.shape}")
+
             s[-1] = np.concatenate([np.zeros((1, max_len - tlen, state_dim)), s[-1]], axis=1)
             s[-1] = (s[-1] - state_mean) / state_std
             a[-1] = np.concatenate([np.ones((1, max_len - tlen, act_dim)) * -10., a[-1]], axis=1)
@@ -410,13 +429,15 @@ def experiment(
     run = wandb.init(project='camelmera', config=variant)
 
     # Train the model using the trainer.train method
-    # for iter in range(variant['max_iters']):
-    #     outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-    #     if log_to_wandb:
-    #         wandb.log(outputs)
+    print("Starting training...")
+    for iter in range(variant['max_iters']):
+        outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+        print("Iteration:", iter+1, "Loss:", outputs['loss'])
+        if log_to_wandb:
+            wandb.log(outputs)
 
 
-    # torch.save(model.state_dict(), "trained_model2.pt")
+    torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
     # Load the saved model
     loaded_model = DecisionTransformer(
             state_dim=state_dim,
@@ -432,7 +453,10 @@ def experiment(
             resid_pdrop=variant['dropout'],
             attn_pdrop=variant['dropout'],
         )
-    loaded_model.load_state_dict(torch.load("trained_model.pt"))
+    current_directory = os.getcwd()
+    print("Current working directory:", current_directory)    
+
+    loaded_model.load_state_dict(torch.load('trained_model_image_depth_imu_pos.pt'))
     loaded_model.to(device=device)
     print ("model loaded")
     # Evaluate the loaded model using the modified evaluation function
@@ -467,12 +491,15 @@ def experiment(
             training_positions.append(traj["observations"][:, -3:])  # Extract position information from the last 3 elements of state
 
             # Prepare input for the model
-            states, actions, rewards, dones, rtg, timesteps, attention_mask = get_batch(len(traj["observations"]))
+            states, actions, rewards, dones, rtg, timesteps, attention_mask = get_batch(256,K)
             action_target = torch.clone(actions)
 
             with torch.no_grad():
-                _, action_preds, _ = model.get_action(states, actions, rewards, rtg[:, :-1], timesteps)
+                _, action_preds, _ = model.forward(states, actions, rewards, rtg[:, :-1], timesteps, attention_mask = attention_mask)
                 # act_dim = action_preds.shape[2]
+                action_preds = action_preds[0,:,:]
+                print(action_preds.shape)
+                # print(action_preds[:,j,:])
 
             # Calculate testing positions from predicted actions
             testing_positions.append(traj["observations"][0, -3:] + np.cumsum(action_preds.cpu().numpy(), axis=0))
@@ -487,10 +514,10 @@ def experiment(
 
         # Plot training trajectories
         for traj_positions, color in zip(training_positions, colors):
-            ax.scatter(traj_positions[:, 0], traj_positions[:, 1], traj_positions[:, 2], c=[color], alpha=0.1, marker='o', s=2)
+            ax.scatter(traj_positions[:, 0], traj_positions[:, 1], traj_positions[:, 2], c='red', alpha=0.1, marker='o', s=2)
 
         # Plot testing trajectories
-        ax.scatter(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], c='blue', alpha=0.1, marker='o', s=2)
+        ax.scatter(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], c='blue', alpha=0.1, marker='o', s=6)
         # Plot start and goal positions
         ax.scatter(start_position[0], start_position[1], start_position[2], c='green', marker='s', label='Start', s=100)
         ax.scatter(goal_position[0], goal_position[1], goal_position[2], c='purple', marker='*', label='Goal', s=100)
@@ -554,7 +581,7 @@ if __name__ == '__main__':
     # parser.add_argument('--env', type=str, default='hopper')
     # parser.add_argument('--dataset', type=str, default='medium')  # medium, medium-replay, medium-expert, expert
     # parser.add_argument('--mode', type=str, default='normal')  # normal for standard setting, delayed for sparse
-    parser.add_argument('--K', type=int, default=20)
+    parser.add_argument('--K', type=int, default=100)
     parser.add_argument('--pct_traj', type=float, default=1.)
     parser.add_argument('--batch_size', type=int, default=64)
     # parser.add_argument('--model_type', type=str, default='dt')  # dt for decision transformer, bc for behavior cloning
@@ -568,7 +595,7 @@ if __name__ == '__main__':
     parser.add_argument('--warmup_steps', type=int, default=10000)
     parser.add_argument('--num_eval_episodes', type=int, default=100)
     parser.add_argument('--max_iters', type=int, default=10)
-    parser.add_argument('--num_steps_per_iter', type=int, default=10000)
+    parser.add_argument('--num_steps_per_iter', type=int, default=1000)
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--log_to_wandb', '-w', type=bool, default=False)
     
