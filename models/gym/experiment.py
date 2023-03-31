@@ -21,8 +21,19 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
 
+# TODO: change dataset_name and trajectory_numbers
+dataset_name = "image_pos"
+trajectory_numbers = ['1', '2', '3', '5', '6']
 
-model_name = "trained_model_image_depth_imu_pos"
+model_name = f"trained_model_{dataset_name}"
+saved_folder_path = '/content/drive/MyDrive/tartanairv2filtered/'
+
+preprocessed_data_files = []
+print("available preprocessed data file:")
+for n in trajectory_numbers:
+    preprocessed_data_file = os.path.join(saved_folder_path, f'preprocessed_{dataset_name}_v00{n}.pkl')
+    print(preprocessed_data_file)
+    preprocessed_data_files.append(preprocessed_data_file)
 
 def save_preprocessed_data(dataset, file_path):
     with open(file_path, 'wb') as f:
@@ -147,11 +158,6 @@ def discount_cumsum(x, gamma):
 p_number = 1
 goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
 
-saved_folder_path = '/content/drive/MyDrive/tartanairv2filtered/'
-
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_image_depth_pos_imu_v006.pkl')
-preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_data_v001.pkl')
-preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_data_v002.pkl')
 
 def experiment(
         exp_prefix,
@@ -165,13 +171,7 @@ def experiment(
     env_targets = [5000, 2500]
     scale = 1000.
 
-    goal_position = np.array([10, 10, 10])  
-
-
-    # TODO: Get trajectory from a single dictionary
-    trajectory6 = get_preprocessed_data("", goal_position, preprocessed_data_file)
-    trajectory1 = get_preprocessed_data("", goal_position, preprocessed_data_file1)
-    trajectory2 = get_preprocessed_data("", goal_position, preprocessed_data_file2)
+    goal_position = np.array([10, 10, 10])
 
     def normalize_data(data):
         normalized_data = {}
@@ -189,8 +189,12 @@ def experiment(
         
         return normalized_data
 
-    # TODO:
-    trajectories = [normalize_data(trajectory1), normalize_data(trajectory2), normalize_data(trajectory6)]
+    trajectories = []
+
+    for idx in range(len(trajectory_numbers)):
+        n = trajectory_numbers[idx]
+        trajectories.append(normalize_data(get_preprocessed_data("", goal_position, preprocessed_data_files[idx])))    
+
     print("Number of trajs", len(trajectories))
     print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
     print("number of rewards in trajectories", len(trajectories[0]['rewards']), len(trajectories[1]['rewards']), len(trajectories[2]['rewards']))
@@ -414,7 +418,7 @@ def experiment(
     run = wandb.init(project='camelmera', config=variant)
 
     # Train the model using the trainer.train method
-    print("Starting training...")
+    print(f"Starting training {model_name}...")
     for iter in range(variant['max_iters']):
         print(f"Starting training iter={iter}...")
         outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)

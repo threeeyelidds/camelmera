@@ -29,6 +29,7 @@ class Trainer:
 
         self.model.train()
         # print("number of steps per iteration: ", num_steps)
+        print("batch size: ", self.batch_size)
         for i in tqdm(range(num_steps)):
             train_loss = self.train_step()
             train_losses.append(train_loss)
