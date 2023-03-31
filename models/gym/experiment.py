@@ -16,8 +16,7 @@ import os
 from PIL import Image
 import timm
 from torchvision import transforms
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+
 
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
@@ -25,6 +24,11 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback
 
 from gym.envs.registration import register
+
+# Graph imports
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.cm as cm
 # from decision_transformer.envs.custom_env import AirSimDroneEnv
 
 register(
@@ -81,7 +85,7 @@ def load_data(main_folder_path, goal_position):
                 positions.append(np.array([x, y, z]))
 
         model_name = 'vit_base_patch16_224'
-        model = timm.create_model(model_name, pretrained=True, features_only=True)
+        model = timm.create_model(model_name, pretrained=True)
         model.eval()
 
         preprocess = transforms.Compose([
@@ -105,10 +109,11 @@ def load_data(main_folder_path, goal_position):
                 input_tensor = preprocess(img)
                 input_batch = input_tensor.unsqueeze(0)
                 with torch.no_grad():
-                    embedding = model(input_batch)
+                    embedding = model.forward_features(input_batch) # Delete the classification result
 
-                embedding = embedding.squeeze().numpy()
+                embedding = embedding.squeeze().reshape(-1).numpy() # Reshape the embedding to a 1D array
 
+                
                 state = np.hstack((embedding, positions[idx]))  # Stack the embeddings and positions horizontally
                 states.append(state)
 
@@ -177,10 +182,9 @@ def experiment(
         exp_prefix,
         variant,
 ):
-    print(torch.__version__)
-    print(torch.version.cuda)
+    
     device = variant.get('device', 'cuda')
-    log_to_wandb = variant.get('log_to_wandb', True)
+    log_to_wandb = variant.get('log_to_wandb', False)
 
     max_ep_len = 1000
     env_targets = [5000, 2500]
@@ -195,6 +199,11 @@ def experiment(
         print("No trajectories found in the given folder.")
     else:
         state_dim, act_dim = get_dimensions(trajectories[0])
+
+    for i, traj in enumerate(trajectories):
+        start_position = traj['observations'][0][-3:]  # Get the last three elements of the first observation
+        end_position = traj['observations'][-1][-3:]   # Get the last three elements of the last observation
+        print(f"Trajectory {i + 1}: Start position = {start_position}, End position = {end_position}")
 
     # mode = variant.get('mode', 'normal')
 
@@ -231,7 +240,7 @@ def experiment(
     for i, path in enumerate(trajectories):
         print(f"Trajectory {i + 1}: Sum of rewards = {sum(path['rewards'])}, Trajectory length = {len(path['rewards'])}")
 
-
+    print("Current Directory", os.getcwd())
     print('=' * 50)
     print(f'Starting new experiment')
     print(f'{len(traj_lens)} trajectories, {num_timesteps} timesteps found')
@@ -271,8 +280,9 @@ def experiment(
         for i in range(batch_size):
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
             #print ("trajectory reward shape: ", traj['rewards'].shape[0])
-            si = random.randint(0, traj['rewards'].shape[0] - batch_size)
-            #si = 0
+            # print (traj['rewards'].shape[0])
+            # si = random.randint(0, traj['rewards'].shape[0] - batch_size)
+            si = 0
             # print('actions',traj['actions'].shape[0] - 1)
             # print('observations',traj['observations'].shape[0] - 1)
             # print('rewards',traj['rewards'].shape[0] - 1)
@@ -397,40 +407,45 @@ def experiment(
     # # Visualize the trajectories
     # visualize_trajectories(trajectories, model_trajectories)
 
+    run = wandb.init(project='camelmera', config=variant)
+
     # Train the model using the trainer.train method
-    for iter in range(variant['max_iters']):
-        outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-        if log_to_wandb:
-            wandb.log(outputs)
+    # for iter in range(variant['max_iters']):
+    #     outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
+    #     if log_to_wandb:
+    #         wandb.log(outputs)
 
 
-    torch.save(model.state_dict(), "trained_model.pt")
-    # # Load the saved model
-    # loaded_model = DecisionTransformer(
-    #         state_dim=state_dim,
-    #         act_dim=act_dim,
-    #         max_length=K,
-    #         max_ep_len=max_ep_len,
-    #         hidden_size=variant['embed_dim'],
-    #         n_layer=variant['n_layer'],
-    #         n_head=variant['n_head'],
-    #         n_inner=4*variant['embed_dim'],
-    #         activation_function=variant['activation_function'],
-    #         n_positions=1024,
-    #         resid_pdrop=variant['dropout'],
-    #         attn_pdrop=variant['dropout'],
-    #     )
-    # loaded_model.load_state_dict(torch.load("trained_model.pt"))
-    # loaded_model.to(device=device)
-
+    # torch.save(model.state_dict(), "trained_model2.pt")
+    # Load the saved model
+    loaded_model = DecisionTransformer(
+            state_dim=state_dim,
+            act_dim=act_dim,
+            max_length=K,
+            max_ep_len=max_ep_len,
+            hidden_size=variant['embed_dim'],
+            n_layer=variant['n_layer'],
+            n_head=variant['n_head'],
+            n_inner=4*variant['embed_dim'],
+            activation_function=variant['activation_function'],
+            n_positions=1024,
+            resid_pdrop=variant['dropout'],
+            attn_pdrop=variant['dropout'],
+        )
+    loaded_model.load_state_dict(torch.load("trained_model.pt"))
+    loaded_model.to(device=device)
+    print ("model loaded")
     # Evaluate the loaded model using the modified evaluation function
     # for target_rew in env_targets:
     #     eval_fn = eval_episodes(target_rew)
     #     eval_results = eval_fn(loaded_model)
     #     print(f"Evaluation results for target {target_rew}: {eval_results}")
 
+    # Visualize the model performance
+    # visualize_model_performance(loaded_model, trajectories, goal_position, device)
 
-
+    start_position = trajectories[0]['observations'][0][-3:]
+    
     if log_to_wandb:
         wandb.init(
             name=exp_prefix,
@@ -438,51 +453,100 @@ def experiment(
             project='decision-transformer',
             config=variant
         )
-        # wandb.watch(model)  # wandb has some bug
+        wandb.watch(model)  # wandb has some bug
+
+    run.finish()
+
+    def visualize_performance(model, trajectories, start_position, goal_position):
+        model.eval()
+
+        training_positions = []
+        testing_positions = []
+
+        for traj in trajectories:
+            training_positions.append(traj["observations"][:, -3:])  # Extract position information from the last 3 elements of state
+
+            # Prepare input for the model
+            states, actions, rewards, dones, rtg, timesteps, attention_mask = get_batch(len(traj["observations"]))
+            action_target = torch.clone(actions)
+
+            with torch.no_grad():
+                _, action_preds, _ = model.get_action(states, actions, rewards, rtg[:, :-1], timesteps)
+                # act_dim = action_preds.shape[2]
+
+            # Calculate testing positions from predicted actions
+            testing_positions.append(traj["observations"][0, -3:] + np.cumsum(action_preds.cpu().numpy(), axis=0))
+
+        testing_positions = np.concatenate(testing_positions, axis=0)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Color code for each training trajectory
+        colors = cm.rainbow(np.linspace(0, 1, len(trajectories)))
+
+        # Plot training trajectories
+        for traj_positions, color in zip(training_positions, colors):
+            ax.scatter(traj_positions[:, 0], traj_positions[:, 1], traj_positions[:, 2], c=[color], alpha=0.1, marker='o', s=2)
+
+        # Plot testing trajectories
+        ax.scatter(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], c='blue', alpha=0.1, marker='o', s=2)
+        # Plot start and goal positions
+        ax.scatter(start_position[0], start_position[1], start_position[2], c='green', marker='s', label='Start', s=100)
+        ax.scatter(goal_position[0], goal_position[1], goal_position[2], c='purple', marker='*', label='Goal', s=100)
+
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.legend()
+
+        plt.show()
 
 
 
-def visualize_trajectories(dataset_trajectories, model_trajectories, title="Trajectories"):
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.set_title(title)
+    visualize_performance(model, trajectories, start_position, goal_position)
 
-    # Plot dataset trajectories
-    for trajectory in dataset_trajectories:
-        positions = trajectory['positions']
-        xs, ys, zs = positions[:, 0], positions[:, 1], positions[:, 2]
-        ax.plot(xs, ys, zs, marker='o', markersize=5, label='Dataset')
+# Example usage
+# visualize_performance(model, trajectories, goal_position, start_position=None)
 
-    # Plot model trajectories
-    for trajectory in model_trajectories:
-        positions = trajectory['positions']
-        xs, ys, zs = positions[:, 0], positions[:, 1], positions[:, 2]
-        ax.plot(xs, ys, zs, marker='^', markersize=5, label='Model')
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.legend()
+# Example usage
+# visualize_performance(model, trajectories, goal_position, start_position=None)
+# def visualize_model_performance(loaded_model, trajectories, goal_position, device='cuda'):
+#     # Extract position information from trajectories
+#     training_positions = [traj['observations'][:, -3:] for traj in trajectories]
+    
+#     # Create a 3D plot for the training trajectories
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111, projection='3d')
+#     for positions in training_positions:
+#         ax.plot(positions[:, 0], positions[:, 1], positions[:, 2], alpha=0.1, color='blue')
 
-    plt.show()
+#     # Visualize the start and goal positions
+#     start_position = training_positions[0][0]
+#     ax.scatter(start_position[0], start_position[1], start_position[2], c='green', marker='o', label='Start')
+#     ax.scatter(goal_position[0], goal_position[1], goal_position[2], c='red', marker='o', label='Goal')
 
-def generate_model_trajectory(model, initial_state, num_steps, state_mean, state_std):
-    state = initial_state.copy()
-    positions = [state[-3:]]  # Assuming the last three elements of the state represent the position (x, y, z)
+#     # Use the loaded model to predict actions for each state in the testing trajectory
+#     testing_positions = [start_position]
+#     state = torch.tensor(start_position, dtype=torch.float32).unsqueeze(0).to(device)
+#     for _ in range(1000):  # 1000 is the maximum trajectory length
+#         with torch.no_grad():
+#             action = loaded_model(state).cpu().numpy()[0]
+#         new_position = testing_positions[-1] + action
+#         testing_positions.append(new_position)
+#         state = torch.tensor(new_position, dtype=torch.float32).unsqueeze(0).to(device)
 
-    with torch.no_grad():
-        for _ in range(num_steps):
-            input_state = (state - state_mean) / state_std
-            input_tensor = torch.tensor(input_state, dtype=torch.float32).unsqueeze(0).to(device)
-            action = model(input_tensor).squeeze().cpu().numpy()
+#     # Plot the testing trajectory
+#     testing_positions = np.array(testing_positions)
+#     ax.plot(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], color='purple', label='Testing')
 
-            new_state = state.copy()
-            new_state[-3:] += action
-            positions.append(new_state[-3:])
-            state = new_state
-
-    return {'positions': np.array(positions)}
-
+#     # Set labels and show the plot
+#     ax.set_xlabel('X')
+#     ax.set_ylabel('Y')
+#     ax.set_zlabel('Z')
+#     ax.legend()
+#     plt.show()
 
 
 if __name__ == '__main__':
