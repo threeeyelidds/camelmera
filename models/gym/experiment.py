@@ -159,9 +159,10 @@ def discount_cumsum(x, gamma):
 main_folder_path = '/media/jeffrey/2TB HHD/AbandonedCableExposure/Data_easy'
 goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
 saved_folder_path = '/media/jeffrey/2TB HHD/camelmera'
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v006.pkl')
-preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v001.pkl')
-preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v002.pkl')
+preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_lidar_image_pos_imu_v006.pkl')
+preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_lidar_image_pos_imu_v005.pkl')
+preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_lidar_image_pos_imu_v002.pkl')
+
 # env = DummyVecEnv(
 #     [
 #         lambda: Monitor(
@@ -427,7 +428,8 @@ def experiment(
             batch_size=batch_size,
             get_batch=get_batch,
             scheduler=scheduler,
-            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2)/torch.mean(a**2),
+            loss_fn=lambda s_hat, a_hat, r_hat, s, a, r: torch.mean((a_hat - a)**2), # MSE
+            # loss_fn = lambda s_hat, a_hat, r_hat, s, a, r: torch.mean(1 - (torch.sum(a_hat * a, dim=-1) / (torch.norm(a_hat, dim=-1) * torch.norm(a, dim=-1)))) # cosine distance
             # eval_fns= [eval_episodes(tar) for tar in env_targets],
         )
 
@@ -456,7 +458,7 @@ def experiment(
             wandb.log(outputs)
 
 
-    torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
+    torch.save(model.state_dict(), "trained_model_lidar_image_imu_pos.pt")
     # Load the saved model
     loaded_model = DecisionTransformer(
             state_dim=state_dim,
@@ -508,22 +510,26 @@ def experiment(
 
         for traj in trajectories:
             training_positions.append(traj["observations"][:, -3:])  # Extract position information from the last 3 elements of state
-
-            # Prepare input for the model
-            states, actions, rewards, dones, rtg, timesteps, attention_mask = get_batch(256,K)
-            action_target = torch.clone(actions)
+      
+            action_pred = model.get_action(states, actions, rewards, rtg, timesteps)
 
             with torch.no_grad():
                 _, action_preds, _ = model.forward(states, actions, rewards, rtg[:, :-1], timesteps, attention_mask = attention_mask)
                 # act_dim = action_preds.shape[2]
                 action_preds = action_preds[0,:,:]
-                print(action_preds.shape)
+                # print(action_preds.shape)
                 # print(action_preds[:,j,:])
 
             # Calculate testing positions from predicted actions
-            testing_positions.append(traj["observations"][0, -3:] + np.cumsum(action_preds.cpu().numpy(), axis=0))
+            print("sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0))
+            print("shape of sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0).shape)
+            
+            testing_positions.append(states[0, 0, -243:-240] + np.cumsum(action_preds.cpu().numpy(), axis=0))
 
         testing_positions = np.concatenate(testing_positions, axis=0)
+        print("testing positions", testing_positions.shape)
+
+        
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
