@@ -3,6 +3,8 @@ import torch
 
 import time
 
+from tqdm import tqdm
+
 
 class Trainer:
 
@@ -26,12 +28,15 @@ class Trainer:
         train_start = time.time()
 
         self.model.train()
+<<<<<<< HEAD
         print("number of steps per iteration: ", num_steps)
         for i in range(num_steps):
+=======
+        # print("number of steps per iteration: ", num_steps)
+        print("batch size: ", self.batch_size)
+        for i in tqdm(range(num_steps)):
+>>>>>>> 2597faab4675ef0fa99897e07e1e150653d4b230
             train_loss = self.train_step()
-            # print a step every 100 steps
-            if i % 100 == 0: 
-                print("Took a step", i)
             train_losses.append(train_loss)
             if self.scheduler is not None:
                 self.scheduler.step()
