@@ -348,34 +348,6 @@ def experiment(
             resid_pdrop=variant['dropout'],
             attn_pdrop=variant['dropout'],
         )
-        
-    def eval_episodes(target_rew):
-        def fn(model):
-            returns, lengths = [], []
-            for _ in range(num_eval_episodes):
-                with torch.no_grad():
-                    ret, length = evaluate_episode_rtg(
-                        state_dim,
-                        act_dim,
-                        model,
-                        max_ep_len=max_ep_len,
-                        scale=scale,
-                        target_return=target_rew/scale,
-                        # mode=mode,
-                        state_mean=state_mean,
-                        state_std=state_std,
-                        device=device,
-                        )
-                returns.append(ret)
-                lengths.append(length)
-            return {
-                f'target_{target_rew}_return_mean': np.mean(returns),
-                f'target_{target_rew}_return_std': np.std(returns),
-                f'target_{target_rew}_length_mean': np.mean(lengths),
-                f'target_{target_rew}_length_std': np.std(lengths),
-            }
-        return fn
-
 
 
     model = model.to(device=device)
@@ -401,19 +373,6 @@ def experiment(
             # eval_fns= [eval_episodes(tar) for tar in env_targets],
         )
 
-    # # Generate a list of initial states from the dataset
-    # initial_states = [traj['observations'][0] for traj in trajectories]
-
-    # # Generate model-predicted trajectories
-    # num_steps = 50  # You can adjust the number of steps in the predicted trajectories
-    # model_trajectories = [generate_model_trajectory(model, init_state, num_steps, state_mean, state_std) for init_state in initial_states]
-
-    # # Extract positions from dataset trajectories
-    # for traj in trajectories:
-    #     traj['positions'] = traj['observations'][:, -3:]  # Assuming the last three elements of the state represent the position (x, y, z)
-
-    # # Visualize the trajectories
-    # visualize_trajectories(trajectories, model_trajectories)
 
     run = wandb.init(project='camelmera', config=variant)
 
@@ -448,14 +407,7 @@ def experiment(
     loaded_model.load_state_dict(torch.load(f'{model_name}_{iter}.pt'))
     loaded_model.to(device=device)
     print ("model loaded")
-    # Evaluate the loaded model using the modified evaluation function
-    # for target_rew in env_targets:
-    #     eval_fn = eval_episodes(target_rew)
-    #     eval_results = eval_fn(loaded_model)
-    #     print(f"Evaluation results for target {target_rew}: {eval_results}")
 
-    # Visualize the model performance
-    # visualize_model_performance(loaded_model, trajectories, goal_position, device)
 
     start_position = trajectories[0]['observations'][0][-3:]
     
