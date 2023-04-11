@@ -35,14 +35,15 @@ def normalize_data(data):
   return normalized_data,pos_mean,pos_std
 
 
+
 def evaluate(model, trajectory, goal_position, prediction_step=100):
   model.eval()
   
   if contains_imu:
     # Extract training positions from state
-    training_positions = trajectory["observations"][:, -243:-240].copy()
+    training_positions = trajectory["observations"][:, 14184:14187].copy()
     # start position is the start of the trajectory
-    start_position = trajectory["observations"][0,-243:-240].copy()
+    start_position = trajectory["observations"][0,14184:14187].copy()
   else:
     # Extract training positions from state
     training_positions = trajectory["observations"][:, -3:].copy()
@@ -86,11 +87,12 @@ def evaluate(model, trajectory, goal_position, prediction_step=100):
       cur_pos += pos_change.reshape(-1).cpu().numpy()
       testing_positions.append(cur_pos.copy())
       if contains_imu:
-        next_state[:,-243:-240] = torch.tensor(cur_pos,dtype=torch.float32).reshape(1,-1)
+        # print("Position change ", next_state[:, :-240])
+        next_state[:,14184:14187] = torch.tensor(cur_pos,dtype=torch.float32).reshape(1,-1)
       else:
         next_state[:,-3:] = torch.tensor(cur_pos,dtype=torch.float32).reshape(1,-1)
       # compute the reward yourself
-      next_reward = torch.tensor([compute_reward(start_position, goal_position)],dtype=torch.float32).reshape(1,-1)
+      next_reward = torch.tensor([compute_reward(cur_pos, goal_position)],dtype=torch.float32).reshape(1,-1)
       states = torch.cat((states,next_state.reshape(1,1,-1)),dim=1)
       actions = torch.cat((actions,next_action.reshape(1,1,-1)),dim=1)
       rewards = torch.cat((rewards,next_reward.reshape(1,-1)),dim=1)
@@ -100,7 +102,7 @@ def evaluate(model, trajectory, goal_position, prediction_step=100):
   # (1,100,3)
   terminating_pos = testing_positions[-1].copy()
   testing_positions = np.array(testing_positions)
-  distance_to_goal = np.linalg.norm(terminating_pos-start_position)
+  distance_to_goal = np.linalg.norm(terminating_pos-goal_position)
   # print("actions ", actions)
   print("training positions shape ", training_positions.shape)
   print("testing positions shape ", testing_positions.shape)
@@ -150,13 +152,13 @@ def visualize_performance(train_positions, test_positions, start_position, goal_
     plt.show()
 
 # change these params
-model_name = "trained_model_lidar_image_imu_pos"
-file_path = "/media/jeffrey/2TB HHD/camelmera/preprocessed_lidar_image_pos_imu_v002.pkl"
+model_name = "trained_model_image_depth_imu_pos"
+file_path = "/media/jeffrey/2TB HHD/camelmera/preprocessed_image_depth_pos_imu_v002.pkl"
 
 # unimodal: 7095, image+lidar/depth: 14187, image+lidar/depth+imu: 14187+240,
 # check the state_dim yourself if there is any error
 
-state_dim=14187+240
+state_dim=14451
 itertion=8
 contains_imu=True
 
@@ -176,32 +178,27 @@ loaded_model = DecisionTransformer(
         resid_pdrop=0.1,
         attn_pdrop=0.1,
     )
+
+    
 current_directory = os.getcwd()
 print("Current working directory:", current_directory)    
 
-loaded_model.load_state_dict(torch.load(f'{model_name}_{itertion}.pt'))
+loaded_model.load_state_dict(torch.load(f'{model_name}.pt'))
 loaded_model.cpu()
 
 import pickle
 with open(file_path, 'rb') as f:
     trajectories = pickle.load(f)
 trajectories,pos_mean,pos_std = normalize_data(trajectories)
-goal_position=np.array([1,2,1])
+goal_position=np.array([-2, -2, -8])
 print("Goal_Position: ", goal_position)
 print("Pos_mean", pos_mean)
 
-import pickle
-with open(file_path, 'rb') as f:
-    trajectories = pickle.load(f)
-trajectories,pos_mean,pos_std = normalize_data(trajectories)
-goal_position=np.array([1,2,1])
-print(goal_position)
-print(pos_mean)
   
 # input: model, trajectory, goal position, prediction step
 # return: train_trajectory (n,3), test_trajectory (n,3),start_pos, goal_pos, distance to goal
 
-training_positions,testing_positions,start_position,goal_position,distance_to_goal=evaluate(loaded_model,trajectories,goal_position,50)
+training_positions,testing_positions,start_position,goal_position,distance_to_goal=evaluate(loaded_model,trajectories,goal_position,40)
 
 visualize_performance(training_positions,testing_positions,start_position,goal_position)
 
