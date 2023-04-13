@@ -2,6 +2,7 @@
 # note that the input should be three tensors, the output contains 3 masks & 3 id_stores for 3 modalities
 from transformers.models.vit_mae.modeling_vit_mae import ViTMAEModel, ViTMAEEncoder, ViTMAEEmbeddings, ViTMAEModelOutput
 import torch.nn as nn
+import torch
 
 class CustomViT(ViTMAEModel):
     def __init__(self, config):
@@ -53,10 +54,10 @@ class CustomViT(ViTMAEModel):
         embeddings, mask, ids_restore = self.embeddings(pixel_values,noise=noise)
         embeddings1, mask1, ids_restore1 = self.embeddings1(pixel_values1,noise=noise)
         embeddings2, mask2, ids_restore2 = self.embeddings2(pixel_values2,noise=noise)
-        print(embeddings.shape)
+        # print(embeddings.shape)
         # Concatenate the embeddings
         concat_embeddings = torch.cat([embeddings, embeddings1, embeddings2], dim=2)
-        print(concat_embeddings.shape)
+        # print(concat_embeddings.shape)
         # Pass through the MLP
         conbined_embeddings = self.mlp(concat_embeddings)
 

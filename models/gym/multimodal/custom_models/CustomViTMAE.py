@@ -1,9 +1,9 @@
 # define CustomViTMAE, add two decoders, use combined loss
 # 3 masks & 3 id_stores for 3 modalities
-import torchdata
 from transformers.models.vit_mae.modeling_vit_mae import ViTMAEDecoder,ViTMAEForPreTrainingOutput
-from transformers import ViTMAEForPreTraining, ViTConfig
-import torch.nn as nn
+from transformers import ViTMAEForPreTraining
+import torch.utils.data
+import torch
 
 class CustomViTMAE(ViTMAEForPreTraining):
     def __init__(self, config):
