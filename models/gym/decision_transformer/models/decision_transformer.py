@@ -39,8 +39,11 @@ class DecisionTransformer(TrajectoryModel):
 
         self.embed_timestep = nn.Embedding(max_ep_len, hidden_size)
         self.embed_return = torch.nn.Linear(1, hidden_size)
+        # 1,1,1000
         self.embed_state1 = torch.nn.Linear(self.state_dim, 1000)
+        # 1,1,100
         self.embed_state2 = torch.nn.Linear(1000, hidden_size)
+        # 1,1,1000
         self.embed_action = torch.nn.Linear(self.act_dim, hidden_size)
 
         self.embed_ln = nn.LayerNorm(hidden_size)
