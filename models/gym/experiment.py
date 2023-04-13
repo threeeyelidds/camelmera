@@ -16,24 +16,12 @@ from PIL import Image
 import timm
 from torchvision import transforms
 
-# Graph imports
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.cm as cm
+from Q_learning import DQN
+from Q_learning import Train_DQN
 
-# TODO: change dataset_name and trajectory_numbers
-dataset_name = "image_pos"
-trajectory_numbers = ['1', '2', '3', '5', '6']
-
-model_name = f"trained_model_{dataset_name}"
-saved_folder_path = '/content/drive/MyDrive/tartanairv2filtered/'
 
 preprocessed_data_files = []
-print("available preprocessed data file:")
-for n in trajectory_numbers:
-    preprocessed_data_file = os.path.join(saved_folder_path, f'preprocessed_{dataset_name}_v00{n}.pkl')
-    print(preprocessed_data_file)
-    preprocessed_data_files.append(preprocessed_data_file)
+
 
 def save_preprocessed_data(dataset, file_path):
     with open(file_path, 'wb') as f:
@@ -157,10 +145,9 @@ def discount_cumsum(x, gamma):
 
 p_number = 1
 goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
-saved_folder_path = '/media/jeffrey/2TB HHD/camelmera'
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v006.pkl')
-preprocessed_data_file1 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v001.pkl')
-preprocessed_data_file2 = os.path.join(saved_folder_path, 'preprocessed_imgae_depth_pos_imu_v002.pkl')
+saved_folder_path = '/home/tyz/Desktop/11_777'
+preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_all_data_easy.pkl')
+main_folder_path = '/home/tyz/Desktop/11_777/Data_easy'
 # env = DummyVecEnv(
 #     [
 #         lambda: Monitor(
@@ -246,20 +233,7 @@ def experiment(
     state_mean, state_std = np.mean(states, axis=0), np.std(states, axis=0) + 1e-6
 
     num_timesteps = sum(traj_lens)
-    # Print the first 100 rewards from the dataset
-    # num_rewards_to_print = 10
-    # rewards_printed = 0
-    # for path in trajectories:
-    #     for reward in path['rewards']:
-    #         if rewards_printed < num_rewards_to_print:
-    #             print(f"Reward {rewards_printed + 1}: {reward}")
-    #             rewards_printed += 1
-    #         else:
-    #             break
-        # if rewards_printed >= num_rewards_to_print:
-        #     break
 
-    # Print the sum of rewards and trajectory length for each trajectory
     for i, path in enumerate(trajectories):
         print(f"Trajectory {i + 1}: Sum of rewards = {sum(path['rewards'])}, Trajectory length = {len(path['rewards'])}")
 
@@ -302,14 +276,8 @@ def experiment(
         s, a, r, d, rtg, timesteps, mask = [], [], [], [], [], [], []
         for i in range(batch_size):
             traj = trajectories[int(sorted_inds[batch_inds[i]])]
-            #print ("trajectory reward shape: ", traj['rewards'].shape[0])
-            # print (traj['rewards'].shape[0])
             si = random.randint(0, traj['rewards'].shape[0] - K)
             # si = 0
-            # print('actions',traj['actions'].shape[0] - 1)
-            # print('observations',traj['observations'].shape[0] - 1)
-            # print('rewards',traj['rewards'].shape[0] - 1)
-            # print('si',si)
 
             # get sequences from dataset
             s.append(traj['observations'][si:si + max_len].reshape(1, -1, state_dim))
@@ -331,8 +299,6 @@ def experiment(
             # padding and state + reward normalization
             tlen = s[-1].shape[1]
 
-            # for i, arr in enumerate(a):
-            #     print(f"Array at batch_number {i} has shape {arr.shape}")
 
             s[-1] = np.concatenate([np.zeros((1, max_len - tlen, state_dim)), s[-1]], axis=1)
             s[-1] = (s[-1] - state_mean) / state_std
@@ -353,21 +319,23 @@ def experiment(
 
         return s, a, r, d, rtg, timesteps, mask
     
-    model = DecisionTransformer(
-            state_dim=state_dim,
-            act_dim=act_dim,
-            max_length=K,
-            max_ep_len=max_ep_len,
-            hidden_size=variant['embed_dim'],
-            n_layer=variant['n_layer'],
-            n_head=variant['n_head'],
-            n_inner=4*variant['embed_dim'],
-            activation_function=variant['activation_function'],
-            n_positions=1024,
-            resid_pdrop=variant['dropout'],
-            attn_pdrop=variant['dropout'],
-        )
+    # model = DecisionTransformer(
+    #         state_dim=state_dim,
+    #         act_dim=act_dim,
+    #         max_length=K,
+    #         max_ep_len=max_ep_len,
+    #         hidden_size=variant['embed_dim'],
+    #         n_layer=variant['n_layer'],
+    #         n_head=variant['n_head'],
+    #         n_inner=4*variant['embed_dim'],
+    #         activation_function=variant['activation_function'],
+    #         n_positions=1024,
+    #         resid_pdrop=variant['dropout'],
+    #         attn_pdrop=variant['dropout'],
+    #     )
+    model = DQN(
 
+    )
 
     model = model.to(device=device)
 
@@ -397,37 +365,37 @@ def experiment(
     run = wandb.init(project='camelmera', config=variant)
 
     # Train the model using the trainer.train method
-    print(f"Starting training {model_name}...")
+    print(f"Starting training ...")
     for iter in range(variant['max_iters']):
         print(f"Starting training iter={iter}...")
         outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
         # print("Iteration:", iter+1, "Loss:", outputs['loss'])
         # if log_to_wandb:
         #     wandb.log(outputs)
-        torch.save(model.state_dict(), f"{model_name}_{iter}.pt")
+        torch.save(model.state_dict(), f"DQN_{iter}.pt")
 
     torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
     # Load the saved model
-    loaded_model = DecisionTransformer(
-            state_dim=state_dim,
-            act_dim=act_dim,
-            max_length=K,
-            max_ep_len=max_ep_len,
-            hidden_size=variant['embed_dim'],
-            n_layer=variant['n_layer'],
-            n_head=variant['n_head'],
-            n_inner=4*variant['embed_dim'],
-            activation_function=variant['activation_function'],
-            n_positions=1024,
-            resid_pdrop=variant['dropout'],
-            attn_pdrop=variant['dropout'],
-        )
+    # loaded_model = DecisionTransformer(
+    #         state_dim=state_dim,
+    #         act_dim=act_dim,
+    #         max_length=K,
+    #         max_ep_len=max_ep_len,
+    #         hidden_size=variant['embed_dim'],
+    #         n_layer=variant['n_layer'],
+    #         n_head=variant['n_head'],
+    #         n_inner=4*variant['embed_dim'],
+    #         activation_function=variant['activation_function'],
+    #         n_positions=1024,
+    #         resid_pdrop=variant['dropout'],
+    #         attn_pdrop=variant['dropout'],
+    #     )
     current_directory = os.getcwd()
     print("Current working directory:", current_directory)    
 
-    loaded_model.load_state_dict(torch.load(f'{model_name}_{iter}.pt'))
-    loaded_model.to(device=device)
-    print ("model loaded")
+    # loaded_model.load_state_dict(torch.load(f'{model_name}_{iter}.pt'))
+    # loaded_model.to(device=device)
+    # print ("model loaded")
 
 
     start_position = trajectories[0]['observations'][0][-3:]
