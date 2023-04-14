@@ -2,14 +2,14 @@ from urllib.parse import urlparse
 from azure.storage.blob import BlobServiceClient
 import os
 
+
+# default setting would download all trajacories to /data/tartanairv2filtered/
+destination_folder_base = 'tartanairv2filtered'
+
 # Define your Azure Blob Storage connection string and container name
 connection_string = 'DefaultEndpointsProtocol=https;AccountName=tartanairv2;AccountKey=PH1q1TB4fHqGFnvfivj9jPrvABz2ESX1OKkrA4+8G3qoHJpIPDmDok4d2uzDNF7RVR9A4cE7Y00n5nsCrc+edA==;EndpointSuffix=core.windows.net'
 container_name = 'data-raw'
 
-destination_folder_base = 'tartanairv2filtered'
-
-# Define your local destination folder
-# destination_folder_base = f'tartanairv2filtered/AbandonedCableExposure_EASY_P00{number}/'
 
 def download():
 
