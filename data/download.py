@@ -36,7 +36,7 @@ def download():
             blob_data = blob_client.download_blob()
 
             filename = blob.name.split("/")[-1]
-            trajectory_folder = os.path.join(destination_folder_base, f'{path_lists[0]}_{path_lists[1]}_{path_lists[2]}')
+            trajectory_folder = os.path.join(destination_folder_base, f'{path_lists[0]}/{path_lists[1]}/{path_lists[2]}')
 
             # Move the file to your local machine
             if (path_lists[3].endswith('txt')):
