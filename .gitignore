@@ -1,6 +1,6 @@
 *.pkl
 *.pyc
 *.png
-*.ipynb
+# *.ipynb
 *.ply
 *.txt
