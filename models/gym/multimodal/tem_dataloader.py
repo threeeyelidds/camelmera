@@ -1,3 +1,11 @@
+import torch
+from torch.utils.data import Dataset, DataLoader
+from PIL import Image
+from torchvision import transforms
+import os
+import numpy as np
+import open3d as o3d
+
 class MathExpressionDataset(Dataset):
     def __init__(self, tokenizer, data, max_length):
         self.tokenizer = tokenizer
@@ -18,14 +26,6 @@ class MathExpressionDataset(Dataset):
             "masked_labels": masked_labels.flatten(),
             "value_labels": torch.tensor(float(value), dtype=torch.float)
         }
-
-import torch
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
-from torchvision import transforms
-import os
-import numpy as np
-import open3d as o3d
 
 def process_image(image_path):
     image = Image.open(image_path)
