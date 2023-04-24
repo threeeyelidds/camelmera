@@ -64,13 +64,25 @@ def process_lidar(filename):
 #   print(tensor.shape)
   return tensor
 
+import torch
+from torch.utils.data import Dataset, DataLoader
+from PIL import Image
+from torchvision import transforms
+import os
+import numpy as np
+
 class MultimodalDataset(Dataset):
     def __init__(self, data_dir):
         # create a list of image/depth/lidar paths
+        self.data_dir = data_dir
         self.image_paths = []
         self.depth_paths = []
         self.lidar_paths = []
+        self.image_paths, self.depth_paths, self.lidar_paths = self.load_data()
+    
+    def load_data(self):
         # get folders
+        data_dir = self.data_dir
         for folder in os.listdir(data_dir):
             trajectory_folder_path = os.path.join(data_dir, folder)
             if not os.path.isdir(trajectory_folder_path):
@@ -104,6 +116,7 @@ class MultimodalDataset(Dataset):
         print(f'Number of images: {len(self.image_paths)}')
         print(f'Number of depth: {len(self.depth_paths)}')
         print(f'Number of lidar: {len(self.lidar_paths)}')
+        return self.image_paths, self.depth_paths, self.lidar_paths
 
     def __len__(self):
         return len(self.image_paths)
