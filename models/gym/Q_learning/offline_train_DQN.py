@@ -15,7 +15,7 @@ sys.path.append( os.path.join(parent_dir, "multimodal")  )
 from custom_models.CustomViT import CustomViT
 from custom_models.CustomViTMAE import CustomViTMAE
 from transformers.models.vit_mae.modeling_vit_mae import ViTMAEModel
-from tem_dataloader import MultimodalDatasetPerTrajectory
+from ..multimodal.tem_dataloader import MultimodalDatasetPerTrajectory
 from torch.utils.data import DataLoader
 
 import wandb
