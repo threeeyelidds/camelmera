@@ -5,3 +5,6 @@
 *.ply
 *.txt
 models/wandb/*
+models/gym/wandb/*
+weights/*
+wandb/*

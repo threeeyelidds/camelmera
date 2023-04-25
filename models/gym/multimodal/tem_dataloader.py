@@ -155,6 +155,7 @@ class MultimodalDatasetPerTrajectory(Dataset):
         self.image_paths = []
         self.depth_paths = []
         self.lidar_paths = []
+        self.pose = []
         # get folders
         # for folder in os.listdir(data_dir):
         #     trajectory_folder_path = os.path.join(data_dir, folder)
@@ -169,6 +170,7 @@ class MultimodalDatasetPerTrajectory(Dataset):
         image_folder_path = os.path.join(trajectory_folder_path, self.image_folder_name)
         depth_folder_path = os.path.join(trajectory_folder_path, self.depth_folder_name)
         lidar_folder_path = os.path.join(trajectory_folder_path, self.lidar_folder_name)
+        self.pose_file_path = os.path.join(trajectory_folder_path, 'pose_lcam_front.txt')
 
         # if not os.path.exists(image_folder_path):
         #     continue
@@ -178,10 +180,19 @@ class MultimodalDatasetPerTrajectory(Dataset):
         #     continue
 
         # get image/depth/lidar paths
+        with open(self.pose_file_path) as f:
+            lines = f.readlines()
+            for line in lines:
+                pose_list = line.split(" ")
+                pose_list = [float(_) for _ in pose_list]
+                self.pose.append(torch.Tensor(pose_list))
+            # self.pose = f.readlines()
+        
         if len(os.listdir(image_folder_path)) != len(os.listdir(depth_folder_path)) \
             or len(os.listdir(image_folder_path)) != len(os.listdir(lidar_folder_path)) \
-            or len(os.listdir(depth_folder_path)) != len(os.listdir(lidar_folder_path)):
-            print(f'Number of images, depth, and lidar files do not match in folder: {trajectory_folder_path}')
+            or len(os.listdir(depth_folder_path)) != len(os.listdir(lidar_folder_path)) \
+            or len(self.pose) != len(os.listdir(image_folder_path)):
+            print(f'Number of images, depth, lidar, pose files do not match in folder: {trajectory_folder_path}')
             # continue
         self.image_paths += [os.path.join(image_folder_path, path) for path in os.listdir(image_folder_path)]
         self.depth_paths += [os.path.join(depth_folder_path, path) for path in os.listdir(depth_folder_path)]
@@ -189,6 +200,7 @@ class MultimodalDatasetPerTrajectory(Dataset):
         print(f'Number of images: {len(self.image_paths)}')
         print(f'Number of depth: {len(self.depth_paths)}')
         print(f'Number of lidar: {len(self.lidar_paths)}')
+        print(f'Number of pose: {len(self.pose)}')
 
     def __len__(self):
         return len(self.image_paths)
@@ -209,7 +221,8 @@ class MultimodalDatasetPerTrajectory(Dataset):
         return {
             "pixel_values": image,
             "pixel_values1": depth,
-            "pixel_values2": lidar
+            "pixel_values2": lidar,
+            "pose_values": self.pose[index]
         }
 
 
