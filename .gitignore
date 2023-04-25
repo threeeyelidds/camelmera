@@ -8,3 +8,4 @@ models/wandb/*
 models/gym/wandb/*
 weights/*
 wandb/*
+models/gym/multimodal/wandb/*
