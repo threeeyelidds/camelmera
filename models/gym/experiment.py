@@ -13,12 +13,29 @@ from decision_transformer.training.seq_trainer import SequenceTrainer
 
 import os
 from PIL import Image
+from models.gym.multimodal.custom_models import CustomViT, CustomViTMAE
+from models.gym.multimodal.tem_dataloader import MultimodalDatasetPerTrajectory
 import timm
 from torchvision import transforms
 
 from Q_learning import DQN
 from Q_learning import Train_DQN
 
+from torch.utils.data import DataLoader
+from transformers.models.vit_mae.modeling_vit_mae import ViTMAEModel
+from transformers import ViTMAEForPreTraining, ViTMAEConfig
+
+BATCH_SIZE=32
+
+trained_model_name = "multimodal_DecisionTransformer"
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+environment_name = 'AbandonedCableExposure'
+model_bin_dir = '/home/ubuntu/camelmera/weights'
+environemnt_directory = f'/mnt/data/tartanairv2filtered/{environment_name}/Data_easy'
+
+preprocess_device = "cpu"
+print(preprocess_device)
 
 preprocessed_data_files = []
 
@@ -145,9 +162,9 @@ def discount_cumsum(x, gamma):
 
 p_number = 1
 goal_position = np.array([10, 10, 10]) # One point in P000 Easy trajectory
-saved_folder_path = '/home/tyz/Desktop/11_777'
-preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_all_data_easy.pkl')
-main_folder_path = '/home/tyz/Desktop/11_777/Data_easy'
+# saved_folder_path = '/home/tyz/Desktop/11_777'
+# preprocessed_data_file = os.path.join(saved_folder_path, 'preprocessed_all_data_easy.pkl')
+# main_folder_path = '/home/tyz/Desktop/11_777/Data_easy'
 # env = DummyVecEnv(
 #     [
 #         lambda: Monitor(
@@ -164,6 +181,38 @@ main_folder_path = '/home/tyz/Desktop/11_777/Data_easy'
 # Wrap env as VecTransposeImage to allow SB to handle frame observations
 # env = VecTransposeImage(env)
 
+# Initialize a new CustomViTMAE model
+model_name = "facebook/vit-mae-base"
+
+vit_config = ViTMAEConfig.from_pretrained(model_name)
+vit_config.output_hidden_states=True
+vit_model = CustomViT.from_pretrained(model_name,config=vit_config)
+
+model_name = "facebook/vit-mae-base"
+
+config = ViTMAEConfig.from_pretrained(model_name)
+config.output_hidden_states=True
+
+# load from pretrained model and replace the original encoder with custom encoder
+custom_model = CustomViTMAE.from_pretrained("facebook/vit-mae-base",config=config)
+custom_model.vit = vit_model
+# Load the state_dict from the saved model
+# state_dict = torch.load(os.path.join(model_bin_dir, "pytorch_model.bin"), map_location=torch.device('cpu'))
+state_dict = torch.load(os.path.join(model_bin_dir, "pytorch_model.bin"))
+
+# Apply the state_dict to the custom_model
+custom_model.load_state_dict(state_dict)
+custom_model.eval()
+custom_model.to(preprocess_device)
+
+
+# create Unimodel ViT
+unimodal_model_name = "facebook/vit-mae-base"
+unimodal_vit_config = ViTMAEConfig.from_pretrained(unimodal_model_name)
+unimodal_vit_config.output_hidden_states=True
+unimodal_vit_model = ViTMAEModel.from_pretrained(unimodal_model_name, config=unimodal_vit_config)
+unimodal_vit_model.eval()
+unimodal_vit_model.to(preprocess_device)
 
 def experiment(
         exp_prefix,
@@ -197,9 +246,43 @@ def experiment(
 
     trajectories = []
 
-    for idx in range(len(trajectory_numbers)):
-        n = trajectory_numbers[idx]
-        trajectories.append(normalize_data(get_preprocessed_data("", goal_position, preprocessed_data_files[idx])))    
+    # Training Loop
+    for folder in os.listdir(environemnt_directory):
+        trajectory_folder_path = os.path.join(environemnt_directory, folder)
+        if not os.path.isdir(trajectory_folder_path):
+            continue
+        my_dataset = MultimodalDatasetPerTrajectory(trajectory_folder_path)
+        train_dataloader = DataLoader(my_dataset, batch_size=BATCH_SIZE, shuffle=False)
+        one_traj_data = {'observations': [], 'actions': [], 'rewards': []}
+        
+        for index, raw_batch in enumerate(train_dataloader):
+            
+            # RL_input_dictionary = {'uni_embeddings': [], 'goal': [], 'actions': [], 'rewards': []}
+            pixel_values = raw_batch["pixel_values"].to(preprocess_device)
+            pixel_values1 = raw_batch["pixel_values1"].to(preprocess_device)
+            pixel_values2 = raw_batch["pixel_values2"].to(preprocess_device)
+            pose_values = raw_batch["pose_values"].to(preprocess_device)
+            merged_embedding = custom_model(pixel_values,pixel_values1,pixel_values2,noise=None)
+
+            unimodal_outputs = unimodal_vit_model(pixel_values[-1,:,:,:].unsqueeze(0))
+            # RL_input_dictionary['goal'].append(unimodal_outputs.last_hidden_state[0,0,:])
+
+            for element_index in range(pixel_values.shape[0]):
+                one_traj_data['observations'].append( torch.cat((merged_embedding.hidden_states[0][element_index,0,:], unimodal_outputs.last_hidden_state[0,0,:]), dim=-1)  )
+
+            for element_index_1 in range(pixel_values.shape[0] - 1):
+                one_traj_data["actions"].append(pose_values[element_index_1 + 1] - pose_values[element_index_1])
+            # one_traj_data["actions"].append(torch.zeros_like(RL_input_dictionary["actions"][-1]))
+
+
+            for element_index in range(pixel_values.shape[0]):
+                image_embed = unimodal_vit_model(pixel_values[element_index,:,:,:].unsqueeze(0)).last_hidden_state[0,0,:]
+                reward = -np.linalg.norm((image_embed - RL_input_dictionary['goal'][0]).detach().numpy())
+                # RL_input_dictionary["rewards"].append(torch.tensor(reward, dtype=torch.float32).unsqueeze(0))
+                one_traj_data["rewards"].append(torch.tensor(reward, dtype=torch.float32).unsqueeze(0))
+
+        # trajectories.append(normalize_data(get_preprocessed_data("", goal_position, preprocessed_data_files[idx])))    
+        trajectories.append(one_traj_data)    
 
     print("Number of trajs", len(trajectories))
     print("number of actions in trajectories", len(trajectories[0]['actions']), len(trajectories[1]['actions']), len(trajectories[2]['actions']))
@@ -319,23 +402,23 @@ def experiment(
 
         return s, a, r, d, rtg, timesteps, mask
     
-    # model = DecisionTransformer(
-    #         state_dim=state_dim,
-    #         act_dim=act_dim,
-    #         max_length=K,
-    #         max_ep_len=max_ep_len,
-    #         hidden_size=variant['embed_dim'],
-    #         n_layer=variant['n_layer'],
-    #         n_head=variant['n_head'],
-    #         n_inner=4*variant['embed_dim'],
-    #         activation_function=variant['activation_function'],
-    #         n_positions=1024,
-    #         resid_pdrop=variant['dropout'],
-    #         attn_pdrop=variant['dropout'],
-    #     )
-    model = DQN(
+    model = DecisionTransformer(
+            state_dim=state_dim,
+            act_dim=act_dim,
+            max_length=K,
+            max_ep_len=max_ep_len,
+            hidden_size=variant['embed_dim'],
+            n_layer=variant['n_layer'],
+            n_head=variant['n_head'],
+            n_inner=4*variant['embed_dim'],
+            activation_function=variant['activation_function'],
+            n_positions=1024,
+            resid_pdrop=variant['dropout'],
+            attn_pdrop=variant['dropout'],
+        )
+    # model = DQN(
 
-    )
+    # )
 
     model = model.to(device=device)
 
@@ -369,10 +452,9 @@ def experiment(
     for iter in range(variant['max_iters']):
         print(f"Starting training iter={iter}...")
         outputs = trainer.train_iteration(num_steps=variant['num_steps_per_iter'], iter_num=iter+1, print_logs=True)
-        # print("Iteration:", iter+1, "Loss:", outputs['loss'])
-        # if log_to_wandb:
-        #     wandb.log(outputs)
-        torch.save(model.state_dict(), f"DQN_{iter}.pt")
+        print("Iteration:", iter+1, "Loss:", outputs['loss'])
+        wandb.log(outputs)
+        torch.save(model.state_dict(), f"DT_{iter}.pt")
 
     torch.save(model.state_dict(), "trained_model_image_depth_imu_pos.pt")
     # Load the saved model
@@ -400,72 +482,72 @@ def experiment(
 
     start_position = trajectories[0]['observations'][0][-3:]
     
-    if log_to_wandb:
-        wandb.init(
-            name=exp_prefix,
-            # group=group_name,
-            project='decision-transformer',
-            config=variant
-        )
-        wandb.watch(model)  # wandb has some bug
+
+    # wandb.init(
+    #     name=exp_prefix,
+    #     # group=group_name,
+    #     project='decision-transformer',
+    #     config=variant
+    # )
+    # wandb.watch(model)  # wandb has some bug
 
     run.finish()
 
-    def visualize_performance(model, trajectories, start_position, goal_position):
-        model.eval()
+    # def visualize_performance(model, trajectories, start_position, goal_position):
+    #     model.eval()
 
-        training_positions = []
-        testing_positions = []
+    #     training_positions = []
+    #     testing_positions = []
 
-        for traj in trajectories:
-            training_positions.append(traj["observations"][:, -3:])  # Extract position information from the last 3 elements of state
+    #     for traj in trajectories:
+    #         training_positions.append(traj["observations"][:, -3:])  # Extract position information from the last 3 elements of state
       
-            action_pred = model.get_action(states, actions, rewards, rtg, timesteps)
+    #         action_pred = model.get_action(states, actions, rewards, rtg, timesteps)
 
-            with torch.no_grad():
-                _, action_preds, _ = model.forward(states, actions, rewards, rtg[:, :-1], timesteps, attention_mask = attention_mask)
-                # act_dim = action_preds.shape[2]
-                action_preds = action_preds[0,:,:]
-                # print(action_preds.shape)
-                # print(action_preds[:,j,:])
+    #         with torch.no_grad():
+    #             _, action_preds, _ = model.forward(states, actions, rewards, rtg[:, :-1], timesteps, attention_mask = attention_mask)
+    #             # act_dim = action_preds.shape[2]
+    #             action_preds = action_preds[0,:,:]
+    #             # print(action_preds.shape)
+    #             # print(action_preds[:,j,:])
 
-            # Calculate testing positions from predicted actions
-            print("sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0))
-            print("shape of sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0).shape)
+    #         # Calculate testing positions from predicted actions
+    #         print("sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0))
+    #         print("shape of sum of actions", np.cumsum(action_preds.cpu().numpy(), axis=0).shape)
             
-            testing_positions.append(states[0, 0, -243:-240] + np.cumsum(action_preds.cpu().numpy(), axis=0))
+    #         testing_positions.append(states[0, 0, -243:-240] + np.cumsum(action_preds.cpu().numpy(), axis=0))
 
-        testing_positions = np.concatenate(testing_positions, axis=0)
-        print("testing positions", testing_positions.shape)
+    #     testing_positions = np.concatenate(testing_positions, axis=0)
+    #     print("testing positions", testing_positions.shape)
 
         
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+    #     fig = plt.figure()
+    #     ax = fig.add_subplot(111, projection='3d')
 
-        # Color code for each training trajectory
-        colors = cm.rainbow(np.linspace(0, 1, len(trajectories)))
+    #     # Color code for each training trajectory
+    #     colors = cm.rainbow(np.linspace(0, 1, len(trajectories)))
 
-        # Plot training trajectories
-        for traj_positions, color in zip(training_positions, colors):
-            ax.scatter(traj_positions[:, 0], traj_positions[:, 1], traj_positions[:, 2], c='red', alpha=0.1, marker='o', s=2)
+    #     # Plot training trajectories
+    #     for traj_positions, color in zip(training_positions, colors):
+    #         ax.scatter(traj_positions[:, 0], traj_positions[:, 1], traj_positions[:, 2], c='red', alpha=0.1, marker='o', s=2)
 
-        # Plot testing trajectories
-        ax.scatter(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], c='blue', alpha=0.1, marker='o', s=6)
-        # Plot start and goal positions
-        ax.scatter(start_position[0], start_position[1], start_position[2], c='green', marker='s', label='Start', s=100)
-        ax.scatter(goal_position[0], goal_position[1], goal_position[2], c='purple', marker='*', label='Goal', s=100)
+    #     # Plot testing trajectories
+    #     ax.scatter(testing_positions[:, 0], testing_positions[:, 1], testing_positions[:, 2], c='blue', alpha=0.1, marker='o', s=6)
+    #     # Plot start and goal positions
+    #     ax.scatter(start_position[0], start_position[1], start_position[2], c='green', marker='s', label='Start', s=100)
+    #     ax.scatter(goal_position[0], goal_position[1], goal_position[2], c='purple', marker='*', label='Goal', s=100)
 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.legend()
+    #     ax.set_xlabel('X')
+    #     ax.set_ylabel('Y')
+    #     ax.set_zlabel('Z')
+    #     ax.legend()
 
-        plt.show()
+    #     plt.show()
 
 
 
-    visualize_performance(model, trajectories, start_position, goal_position)
+    # visualize_performance(model, trajectories, start_position, goal_position)
 
 # Example usage
 # visualize_performance(model, trajectories, goal_position, start_position=None)
