@@ -243,3 +243,78 @@ class MultimodalDatasetPerTrajectory(Dataset):
             "pixel_values2": lidar,
             "pose_values": self.pose[index]
         }
+
+class MultimodalDatasetAllEnv(Dataset):
+    def __init__(self, all_env_path="/mnt/data/tartanairv2filtered/"):
+
+        # create a list of image/depth/lidar paths
+        self.image_paths = []
+        self.depth_paths = []
+        self.lidar_paths = []
+        # get folders
+        for folder in os.listdir(all_env_path):
+            env_path = os.path.join(all_env_path, folder)
+            if not os.path.isdir(env_path):
+                continue
+            print(f'Processing env folder: {env_path}')
+            all_trajectory_folder_path = os.path.join(env_path, 'Data_easy')
+            for tra_folder in os.listdir(all_trajectory_folder_path):
+                trajectory_folder_path = os.path.join(all_trajectory_folder_path, tra_folder)
+                print(f'Processing folder: {trajectory_folder_path}')
+
+                self.image_folder_name = 'image_lcam_fish'
+                self.depth_folder_name = 'depth_lcam_fish'
+                self.lidar_folder_name = 'lidar'
+
+                image_folder_path = os.path.join(
+                    trajectory_folder_path, self.image_folder_name)
+                depth_folder_path = os.path.join(
+                    trajectory_folder_path, self.depth_folder_name)
+                lidar_folder_path = os.path.join(
+                    trajectory_folder_path, self.lidar_folder_name)
+
+                if not os.path.exists(image_folder_path):
+                    continue
+                if not os.path.exists(depth_folder_path):
+                    continue
+                if not os.path.exists(lidar_folder_path):
+                    continue
+
+                # get image/depth/lidar paths
+                if len(os.listdir(image_folder_path)) != len(os.listdir(depth_folder_path)) \
+                        or len(os.listdir(image_folder_path)) != len(os.listdir(lidar_folder_path)) \
+                        or len(os.listdir(depth_folder_path)) != len(os.listdir(lidar_folder_path)):
+                    print(
+                        f'Number of images, depth, and lidar files do not match in folder: {trajectory_folder_path}')
+                    continue
+                self.image_paths += [os.path.join(image_folder_path, path)
+                                    for path in os.listdir(image_folder_path)]
+                self.depth_paths += [os.path.join(depth_folder_path, path)
+                                    for path in os.listdir(depth_folder_path)]
+                self.lidar_paths += [os.path.join(lidar_folder_path, path)
+                                    for path in os.listdir(lidar_folder_path)]
+        print(f'Number of images: {len(self.image_paths)}')
+        print(f'Number of depth: {len(self.depth_paths)}')
+        print(f'Number of lidar: {len(self.lidar_paths)}')
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, index):
+        # read the image from disk
+        image_path = self.image_paths[index]
+        image = process_image(image_path)
+
+        # read the depth from disk
+        depth_path = self.depth_paths[index]
+        depth = process_depth(depth_path)
+
+        # read the lidar from disk
+        lidar_path = self.lidar_paths[index]
+        lidar = process_lidar(lidar_path)
+
+        return {
+            "pixel_values": image,
+            "pixel_values1": depth,
+            "pixel_values2": lidar
+        }
