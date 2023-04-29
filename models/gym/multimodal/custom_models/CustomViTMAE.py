@@ -48,11 +48,11 @@ class CustomViTMAE(ViTMAEForPreTraining):
         logits = decoder_outputs.logits  # shape (batch_size, num_patches, patch_size*patch_size*num_channels)
         combined_loss = self.forward_loss(pixel_values, logits, mask)
 
-        decoder_outputs1 = self.decoder1(latent, ids_restore)
+        decoder_outputs1 = self.decoder1(latent, ids_restore1)
         logits1 = decoder_outputs1.logits  # shape (batch_size, num_patches, patch_size*patch_size*num_channels)
         combined_loss += self.forward_loss(pixel_values1, logits1, mask1)
 
-        decoder_outputs2 = self.decoder2(latent, ids_restore)
+        decoder_outputs2 = self.decoder2(latent, ids_restore2)
         logits2 = decoder_outputs2.logits  # shape (batch_size, num_patches, patch_size*patch_size*num_channels)
         combined_loss += self.forward_loss(pixel_values2, logits2, mask2)
 
