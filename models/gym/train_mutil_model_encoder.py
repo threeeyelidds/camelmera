@@ -1,6 +1,6 @@
 
 import os
-from multimodal.tem_dataloader import MultimodalDataset
+from multimodal.tem_dataloader import MultimodalDatasetAllEnv
 import wandb
 from multimodal.custom_models.CustomViT import CustomViT
 from multimodal.custom_models.CustomViTMAE import CustomViTMAE
@@ -15,7 +15,7 @@ from transformers import get_linear_schedule_with_warmup
 wandb.login()
 # # 8599fbb702cb5767e13d2ac3b1cdcc1c9b65d451
 
-TOTAL_EPOCH = 2
+TOTAL_EPOCH = 5
 NUM_WORKERS = 16
 BATCH_SIZE = 32
 trained_model_name = "multimodal"
@@ -45,63 +45,49 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 custom_model.to(device)
 
-env_epoch = [['AbandonedCableExposure', TOTAL_EPOCH],
-             ['AbandonedFactoryExposure', TOTAL_EPOCH],
-             ['AbandonedSchoolExposure', TOTAL_EPOCH],
-             ['AmericanDinerExposure', TOTAL_EPOCH]]
-
-train_finish = False
-env_epoch_index = 0
-
 learning_rate = 0.01
 weight_decay = 0.01
 warmup_steps = 0
 optimizer = AdamW(custom_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-while not all(item[1] == 0 for item in env_epoch):
-    while env_epoch[env_epoch_index][1] == 0:
-        env_epoch_index = (env_epoch_index + 1) % 4
-    # env_epoch[env_epoch_index][1] now must not 0
-    environment_name = env_epoch[env_epoch_index][0] # environment_name = 'AbandonedCableExposure'
-    env_epoch[env_epoch_index][1] -= 1
-    env_epoch_index = (env_epoch_index + 1) % 4
+my_dataset =  MultimodalDatasetAllEnv(f'/mnt/data/tartanairv2filtered')
+train_dataloader = DataLoader(my_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+total_steps = len(train_dataloader)
+scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
 
-    my_dataset = MultimodalDataset(f'/mnt/data/tartanairv2filtered/{environment_name}/Data_easy')
-    train_dataloader = DataLoader(my_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
-    total_steps = len(train_dataloader)
-    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+def train(model, dataloader, optimizer, scheduler, device):
+    model.train()
+    total_loss = 0
+    total_samples = 0
 
-    def train(model, dataloader, optimizer, scheduler, device):
-        model.train()
-        total_loss = 0
-        total_samples = 0
+    for batch in dataloader:
+        pixel_values = batch["pixel_values"].to(device)
+        pixel_values1 = batch["pixel_values1"].to(device)
+        pixel_values2 = batch["pixel_values2"].to(device)
 
-        for batch in dataloader:
-            pixel_values = batch["pixel_values"].to(device)
-            pixel_values1 = batch["pixel_values1"].to(device)
-            pixel_values2 = batch["pixel_values2"].to(device)
+        optimizer.zero_grad()
+        outputs = model(pixel_values, pixel_values1, pixel_values2, noise=None)
 
-            optimizer.zero_grad()
-            outputs = model(pixel_values, pixel_values1, pixel_values2, noise=None)
+        loss = outputs.loss
+        loss.backward()
 
-            loss = outputs.loss
-            loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+        scheduler.step()
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            scheduler.step()
+        total_loss += loss.item() * pixel_values.size(0)
+        total_samples += pixel_values.size(0)
 
-            total_loss += loss.item() * pixel_values.size(0)
-            total_samples += pixel_values.size(0)
+        wandb.log({'loss': loss.item()} )
 
-            wandb.log({'loss': loss.item()} )
+    return total_loss / total_samples
 
-        return total_loss / total_samples
-
-    wandb.init(project="11777",name=trained_model_name+"_"+environment_name+time.strftime("%Y%m%d-%H%M%S"))
+wandb.init(project="11777",name=trained_model_name+"_"+"all_env"+time.strftime("%Y%m%d-%H%M%S"))
+print(f'total_steps={total_steps}')
+for epoch in range(TOTAL_EPOCH):
     train_loss = train(custom_model, train_dataloader, optimizer, scheduler, device)
-    print(f"{environment_name} Loss: {train_loss:.4f}")
+    print(f"Loss: {train_loss:.4f}")
     custom_model.save_pretrained(output_dir)
-    wandb.finish()
+wandb.finish()
 
 custom_model.save_pretrained(output_dir)
