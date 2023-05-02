@@ -5,7 +5,14 @@
 *.ply
 *.txt
 models/wandb/*
+<<<<<<< HEAD
 models/gym/wandb/*
 weights/*
 wandb/*
 models/gym/multimodal/wandb/*
+=======
+*.bin
+*.pth
+*.h5
+*.log
+>>>>>>> origin/remove-large-file
