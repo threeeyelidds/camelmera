@@ -21,8 +21,7 @@ def download():
     blob_container_client = blob_service_client.get_container_client(
         container_name)
 
-    # path_combinations = ['depth_lcam_fish', 'depth_rcam_fish', 'image_lcam_fish',
-    #                      'image_rcam_fish', 'imu', 'lidar', 'pose_rcam_front.txt', 'pose_lcam_front.txt']
+
     path_combinations = ['depth_lcam_fish', 'image_lcam_fish', 'imu', 'lidar', 'pose_lcam_front.txt']
 
     blob_list = blob_container_client.list_blobs()

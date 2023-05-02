@@ -5,3 +5,7 @@
 *.ply
 *.txt
 models/wandb/*
+*.bin
+*.pth
+*.h5
+*.log

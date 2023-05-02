@@ -1,0 +1,124 @@
+{
+    "os": "Linux-5.19.0-38-generic-x86_64-with-glibc2.35",
+    "python": "3.9.16",
+    "heartbeatAt": "2023-04-24T02:01:49.509306",
+    "startedAt": "2023-04-24T02:01:49.003961",
+    "docker": null,
+    "cuda": null,
+    "args": null,
+    "state": "running",
+    "program": "<python with no main file>",
+    "git": {
+        "remote": "git@github.com:threeeyelidds/camelmera.git",
+        "commit": "d8664bd35d87cf0ee92c531746debfc56d19a202"
+    },
+    "email": "xiequanting@icloud.com",
+    "root": "/home/tyz/Desktop/11_777/camelmera",
+    "host": "tyz-MS-7C95",
+    "username": "tyz",
+    "executable": "/home/tyz/miniconda3/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 3890.3296250000003,
+        "min": 2200.0,
+        "max": 3400.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 4378.314,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 4547.46,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3639.387,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 4328.206,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3623.163,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3619.746,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3622.103,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3636.9,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3961.74,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 4516.163,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3610.824,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 4268.052,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3614.48,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3638.764,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3622.164,
+            "min": 2200.0,
+            "max": 3400.0
+        },
+        {
+            "current": 3617.808,
+            "min": 2200.0,
+            "max": 3400.0
+        }
+    ],
+    "disk": {
+        "total": 467.8895797729492,
+        "used": 427.44183349609375
+    },
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4090",
+            "memory_total": 25757220864
+        }
+    ],
+    "memory": {
+        "total": 15.547107696533203
+    }
+}
