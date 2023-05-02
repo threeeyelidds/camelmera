@@ -1,25 +1,4 @@
-import sys
-import time
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from DDPG import Actor, Critic
-import os
-import wandb
-from transformers import ViTMAEConfig
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append( os.path.join(parent_dir, "multimodal")  )
 
-from custom_models.CustomViT import CustomViT
-from custom_models.CustomViTMAE import CustomViTMAE
-from transformers.models.vit_mae.modeling_vit_mae import ViTMAEModel
-from tem_dataloader import MultimodalDatasetPerTrajectory
-from torch.utils.data import DataLoader
-
-import wandb
-wandb.login() 
 
 trained_model_name = "multimodal_RL"
 

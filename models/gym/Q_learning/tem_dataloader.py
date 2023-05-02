@@ -6,27 +6,6 @@ import os
 import numpy as np
 import open3d as o3d
 
-class MathExpressionDataset(Dataset):
-    def __init__(self, tokenizer, data, max_length):
-        self.tokenizer = tokenizer
-        self.data = data
-        self.max_length = max_length
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        value, expression = self.data[idx]
-        input_text = f"{expression}"
-        masked_input, masked_labels, attention_mask = create_masked_input_and_labels(input_text, self.tokenizer)
-
-        return {
-            "input_ids": masked_input.flatten(),
-            "attention_mask": attention_mask.flatten(),
-            "masked_labels": masked_labels.flatten(),
-            "value_labels": torch.tensor(float(value), dtype=torch.float)
-        }
-
 def process_image(image_path):
     image = Image.open(image_path)
     transform_image = transforms.Compose([
