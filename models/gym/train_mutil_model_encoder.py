@@ -1,6 +1,6 @@
 
 import os
-from multimodal.tem_dataloader import MultimodalDatasetAllEnv
+from multimodal.tem_dataloader import MultimodalDataset, MultimodalDatasetAllEnv
 import wandb
 from multimodal.custom_models.CustomViT import CustomViT
 from multimodal.custom_models.CustomViTMAE import CustomViTMAE
@@ -50,7 +50,12 @@ weight_decay = 0.01
 warmup_steps = 0
 optimizer = AdamW(custom_model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
-my_dataset =  MultimodalDatasetAllEnv(f'/mnt/data/tartanairv2filtered')
+# my_dataset =  MultimodalDatasetAllEnv(f'/mnt/data/tartanairv2filtered')
+env_name = "AbandonedFactoryExposure"
+my_dataset = MultimodalDataset(f'/mnt/data/tartanairv2filtered/{env_name}/Data_easy')
+trained_model_name = trained_model_name + f"_{env_name}"
+output_dir = '/home/ubuntu/weights/' + trained_model_name
+
 train_dataloader = DataLoader(my_dataset, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
 total_steps = len(train_dataloader)
 scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
