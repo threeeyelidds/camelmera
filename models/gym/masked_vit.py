@@ -1,5 +1,4 @@
-import pickle
-import tfimm
+
 
 from tfimm.architectures.vit import ViTBlock
 from tfimm.layers import PatchEmbeddings
