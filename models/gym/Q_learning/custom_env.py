@@ -138,7 +138,7 @@ The drone is moved to the new position and orientation in the AirSim environment
 class AirSimDroneEnv(gym.Env):
     metadata = {"render.modes": ["rgb_array"]}
 
-    def __init__(self, ip_address, step_length, ob_min, ob_max, goal, threshold=0.05, goal_reward=100, max_steps=500, start_position=[-0.5, 0, -1]):
+    def __init__(self, ip_address, ob_min, ob_max, goal, step_length=10, threshold=0.05, goal_reward=100, max_steps=500, start_position=[-0.5, 0, -1]):
         '''
         goal: the goal position of the drone
         '''
