@@ -4,7 +4,7 @@ import os
 
 
 # default setting would download all trajacories to /data/tartanairv2filtered/
-destination_folder_base = '/mnt/data/tartanairv2filtered'
+destination_folder_base = '/home/ubuntu/data'
 
 # Define your Azure Blob Storage connection string and container name
 connection_string = 'DefaultEndpointsProtocol=https;AccountName=tartanairv2;AccountKey=PH1q1TB4fHqGFnvfivj9jPrvABz2ESX1OKkrA4+8G3qoHJpIPDmDok4d2uzDNF7RVR9A4cE7Y00n5nsCrc+edA==;EndpointSuffix=core.windows.net'
@@ -21,22 +21,18 @@ def download():
     blob_container_client = blob_service_client.get_container_client(
         container_name)
 
-<<<<<<< HEAD
     # path_combinations = ['depth_lcam_fish', 'depth_rcam_fish', 'image_lcam_fish',
     #                      'image_rcam_fish', 'imu', 'lidar', 'pose_rcam_front.txt', 'pose_lcam_front.txt']
     path_combinations = ['depth_lcam_fish', 'image_lcam_fish', 'lidar', 'pose_lcam_front.txt']
-=======
-
-    path_combinations = ['depth_lcam_fish', 'image_lcam_fish', 'imu', 'lidar', 'pose_lcam_front.txt']
->>>>>>> origin/remove-large-file
 
     blob_list = blob_container_client.list_blobs()
 
     for blob in blob_list:
         path_lists = blob.name.split('/')
         if len(path_lists) > 3 and path_lists[1] == "Data_easy" and path_lists[3] in path_combinations:
-            print(blob.name) #e.g., AbandonedCableExposure/Data_easy/P000/depth_lcam_fish/000860_lcam_fish_depth.png
-
+            # print(blob.name) #e.g., AbandonedCableExposure/Data_easy/P000/depth_lcam_fish/000860_lcam_fish_depth.png
+            if 'AbandonedFactoryExposure' not in blob.name:
+                continue
             blob_client = blob_container_client.get_blob_client(blob.name)
 
             filename = blob.name.split("/")[-1]
