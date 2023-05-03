@@ -35,11 +35,11 @@ custom_model.vit = vit_model
 
 output_dir = '/home/ubuntu/weights/' + trained_model_name
 
-if os.path.exists(output_dir):
-    # Load the state_dict from the saved model
-    state_dict = torch.load(f"{output_dir}/pytorch_model.bin")
-    # Apply the state_dict to the custom_model
-    custom_model.load_state_dict(state_dict)
+# if os.path.exists(output_dir):
+#     # Load the state_dict from the saved model
+#     state_dict = torch.load(f"{output_dir}/pytorch_model.bin")
+#     # Apply the state_dict to the custom_model
+#     custom_model.load_state_dict(state_dict)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)

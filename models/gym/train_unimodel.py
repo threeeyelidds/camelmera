@@ -13,10 +13,10 @@ import wandb
 wandb.login() 
 # 8599fbb702cb5767e13d2ac3b1cdcc1c9b65d451
 
-TOTAL_EPOCH = 5
-NUM_WORKERS = 4
+TOTAL_EPOCH = 2
+NUM_WORKERS = 16
 BATCH_SIZE = 32
-trained_model_name = "unimodel_1"
+trained_model_name = "unimodel_2"
 
 # create Unimodel ViT
 model_name = "facebook/vit-mae-base"
@@ -44,10 +44,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 unimodel.to(device)
 
-env_epoch = [['AbandonedFactoryExposure', TOTAL_EPOCH],
+env_epoch = [['AbandonedCableExposure', TOTAL_EPOCH],
+             ['AbandonedFactoryExposure', TOTAL_EPOCH],
              ['AbandonedSchoolExposure', TOTAL_EPOCH],
-             ['AmericanDinerExposure', TOTAL_EPOCH],
-             ['AbandonedCableExposure', TOTAL_EPOCH-1]]
+             ['AmericanDinerExposure', TOTAL_EPOCH]]
 
 train_finish = False
 env_epoch_index = 0
