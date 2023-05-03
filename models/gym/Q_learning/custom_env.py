@@ -8,10 +8,11 @@ import timm
 from torchvision import transforms
 from scipy.spatial.transform import Rotation as R
 import open3d as o3d
-from CustomViT import CustomViT
-from CustomViTMAE import CustomViTMAE
-from transformers import AutoImageProcessor, ViTMAEForPreTraining, ViTMAEConfig
 
+from ..multimodal.custom_models.CustomViT import CustomViT
+from ..multimodal.custom_models.CustomViTMAE import CustomViTMAE
+
+from transformers import AutoImageProcessor, ViTMAEForPreTraining, ViTMAEConfig
 
 import cv2
 from tartanair.sample_pipeline.src.postprocessing.SimulatedLiDAR import SimulatedLiDAR
