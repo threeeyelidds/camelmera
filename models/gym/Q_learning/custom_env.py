@@ -8,10 +8,9 @@ import timm
 from torchvision import transforms
 from scipy.spatial.transform import Rotation as R
 import open3d as o3d
-from CustomViT import CustomViT
-from CustomViTMAE import CustomViTMAE
+from custom_models.CustomViT import CustomViT
+from custom_models.CustomViTMAE import CustomViTMAE
 from transformers import AutoImageProcessor, ViTMAEForPreTraining, ViTMAEConfig
-
 
 import cv2
 from tartanair.sample_pipeline.src.postprocessing.SimulatedLiDAR import SimulatedLiDAR
@@ -153,24 +152,29 @@ class AirSimDroneEnv(gym.Env):
             "prev_position": np.zeros(3),
         }
 
-        # Initialize the pretrained Vision Transformer
-        model_name = "facebook/vit-mae-base"
+        # output_dir='/home/tyz/Desktop/11_777/camelmera/weights'
+        trained_model_name = 'multimodal'
+        output_dir='/home/ubuntu/weights/' + trained_model_name
 
+        # Initialize a new CustomViT model
+        model_name = "facebook/vit-mae-base"
         vit_config = ViTMAEConfig.from_pretrained(model_name)
         vit_config.output_hidden_states=True
-        vit_model = CustomViT.from_pretrained(model_name,config=vit_config)
+        vit_model = CustomViT(config=vit_config)
 
-
+        # Initialize a new CustomViTMAE model
         model_name = "facebook/vit-mae-base"
-
         config = ViTMAEConfig.from_pretrained(model_name)
         config.output_hidden_states=True
+        custom_model = CustomViTMAE(config=config)
+        custom_model.vit = vit_model
 
-        # load from pretrained model and replace the original encoder with custom encoder
-        self.custom_model = CustomViTMAE.from_pretrained("facebook/vit-mae-base",config=config)
-        self.custom_model.vit = vit_model
+        # Load the state_dict from the saved model
+        state_dict = torch.load(f"{output_dir}/pytorch_model.bin")
+        custom_model.load_state_dict(state_dict)
 
-
+        # don't need decoders
+        self.vit_encoder = custom_model.vit
 
         # initialize image_request and depth_request
         self.image_request = airsim.ImageRequest("0", airsim.ImageType.Scene, False, False)
@@ -241,11 +245,12 @@ class AirSimDroneEnv(gym.Env):
         depth_tensor = torch.zeros(1, 3, 224, 224)
        
         # Extract features from the input_data using the ViT model
+        self.vit_encoder.eval()
         with torch.no_grad():
-            outputs = self.custom_model(image_tensor,depth_tensor,lidar_tensor)
-            embedding = outputs.hidden_states
+            outputs = self.vit_encoder(image_tensor,depth_tensor,lidar_tensor)
+            embedding = outputs.last_hidden_states[:, 0, :]
 
-        embedding = embedding.squeeze().numpy()
+        embedding = embedding.detach().numpy()
         print("embedding_size out of Custom ViT", embedding.shape)
 
         observation = {
