@@ -8,3 +8,10 @@ models/wandb/*
 models/gym/wandb/*
 weights/*
 wandb/*
+models/gym/multimodal/wandb/*
+*.bin
+*.pt
+*.h5
+*.log
+*.csv
+*.json

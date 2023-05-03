@@ -4,56 +4,50 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from DDPG import Actor, Critic
+from Q_learning.DDPG import Actor, Critic
 import os
 import wandb
 from transformers import ViTMAEConfig
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append( os.path.join(parent_dir, "multimodal")  )
-
 from multimodal.custom_models.CustomViT import CustomViT
 from multimodal.custom_models.CustomViTMAE import CustomViTMAE
 from transformers.models.vit_mae.modeling_vit_mae import ViTMAEModel
-from ..multimodal.tem_dataloader import MultimodalDatasetPerTrajectory
+from transformers import ViTMAEForPreTraining, ViTMAEConfig
+from multimodal.tem_dataloader import MultimodalDatasetPerTrajectory
 from torch.utils.data import DataLoader
 
+import wandb
+wandb.login() 
 
-trained_model_name = "multimodal_RL"
+
+encoder_name = "unimodel_0"
+trained_model_name = f"{encoder_name}_RL"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 environment_name = 'AbandonedCableExposure'
-model_bin_dir = '/home/ubuntu/camelmera/weights'
+model_bin_dir = '/home/ubuntu/weights/' + encoder_name
 environemnt_directory = f'/mnt/data/tartanairv2filtered/{environment_name}/Data_easy'
 
-# Initialize a new CustomViTMAE model
+# create Unimodel ViT
 model_name = "facebook/vit-mae-base"
-
 vit_config = ViTMAEConfig.from_pretrained(model_name)
 vit_config.output_hidden_states=True
-vit_model = CustomViT.from_pretrained(model_name,config=vit_config)
-
-model_name = "facebook/vit-mae-base"
+vit_model = ViTMAEModel.from_pretrained(model_name,config=vit_config)
 
 config = ViTMAEConfig.from_pretrained(model_name)
 config.output_hidden_states=True
 
 # load from pretrained model and replace the original encoder with custom encoder
-custom_model = CustomViTMAE.from_pretrained("facebook/vit-mae-base",config=config)
-custom_model.vit = vit_model
-custom_model.eval()
-
-# preprocess_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+my_unimodel = ViTMAEForPreTraining.from_pretrained(model_name,config=config)
+my_unimodel.vit = vit_model
+# Load the state_dict from the saved model
+state_dict = torch.load(f"{model_bin_dir}/pytorch_model.bin")
+# Apply the state_dict to the custom_model
+my_unimodel.load_state_dict(state_dict)
+my_unimodel.eval()
 preprocess_device = "cpu"
 print(preprocess_device)
-custom_model.to(preprocess_device)
+my_unimodel.to(preprocess_device)
 
-# Load the state_dict from the saved model
-# state_dict = torch.load(os.path.join(model_bin_dir, "pytorch_model.bin"), map_location=torch.device('cpu'))
-state_dict = torch.load(os.path.join(model_bin_dir, "pytorch_model.bin"))
-
-# Apply the state_dict to the custom_model
-custom_model.load_state_dict(state_dict)
 
 # create Unimodel ViT
 unimodal_model_name = "facebook/vit-mae-base"
@@ -149,15 +143,15 @@ for folder in os.listdir(environemnt_directory):
     train_dataloader = DataLoader(my_dataset, batch_size=BATCH_SIZE, shuffle=False)
     
     for index, raw_batch in enumerate(train_dataloader):
-        RL_input_dictionary = {'merged_embeddings': [], 'goal': [], 'actions': [], 'rewards': []}
+        RL_input_dictionary = {'uni_embeddings': [], 'goal': [], 'actions': [], 'rewards': []}
         pixel_values = raw_batch["pixel_values"].to(preprocess_device)
         pixel_values1 = raw_batch["pixel_values1"].to(preprocess_device)
         pixel_values2 = raw_batch["pixel_values2"].to(preprocess_device)
         pose_values = raw_batch["pose_values"].to(preprocess_device)
-        merged_embedding = custom_model(pixel_values,pixel_values1,pixel_values2,noise=None)
+        merged_embedding = my_unimodel(pixel_values,noise=None)
 
         for element_index in range(pixel_values.shape[0]):
-            RL_input_dictionary["merged_embeddings"].append(merged_embedding.hidden_states[element_index,0,:])
+            RL_input_dictionary["uni_embeddings"].append(merged_embedding.hidden_states[0][element_index,0,:])
 
         for element_index_1 in range(pixel_values.shape[0] - 1):
             RL_input_dictionary["actions"].append(pose_values[element_index_1 + 1] - pose_values[element_index_1])
@@ -171,7 +165,7 @@ for folder in os.listdir(environemnt_directory):
             reward = -np.linalg.norm((image_embed - RL_input_dictionary['goal'][0]).detach().numpy())
             RL_input_dictionary["rewards"].append(torch.tensor(reward, dtype=torch.float32).unsqueeze(0))
 
-        batch_embeddings = RL_input_dictionary['merged_embeddings']
+        batch_embeddings = RL_input_dictionary['uni_embeddings']
         batch_actions = RL_input_dictionary['actions']
         batch_goal = RL_input_dictionary['goal']
         batch_reward = RL_input_dictionary['rewards']

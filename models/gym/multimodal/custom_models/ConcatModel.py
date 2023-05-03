@@ -5,7 +5,7 @@ from transformers import ViTMAEForPreTraining
 import torch.utils.data
 import torch
 
-class CustomViTMAE(ViTMAEForPreTraining):
+class ConcatModel:
     def __init__(self, config):
         super().__init__(config)
         self.config = config
@@ -68,23 +68,3 @@ class CustomViTMAE(ViTMAEForPreTraining):
             hidden_states=latent,
             attentions=outputs.attentions,
         )
-
-
-        # # decode images with the three decoders
-        # decoded_pixels0 = self.decoder(last_hidden_state)
-        # decoded_pixels1 = self.decoder1(last_hidden_state)
-        # decoded_pixels2 = self.decoder2(last_hidden_state)
-        
-
-        # # compute the reconstruction losses for each decoder
-        # reconstruction_loss0 = compute_custom_reconstruction_loss(decoded_pixels0, pixel_values)
-        # reconstruction_loss1 = compute_custom_reconstruction_loss(decoded_pixels1, pixel_values)
-        # reconstruction_loss2 = compute_custom_reconstruction_loss(decoded_pixels2, pixel_values)
-
-        # # compute the combined reconstruction loss
-        # combined_loss = reconstruction_loss1 + reconstruction_loss2 + reconstruction_loss0
-
-        # # add the combined loss to the original loss
-        # outputs.loss += combined_loss
-
-        # return outputs
