@@ -136,21 +136,24 @@ The drone is moved to the new position and orientation in the AirSim environment
 class AirSimDroneEnv(gym.Env):
     metadata = {"render.modes": ["rgb_array"]}
 
-
-    def __init__(self, ip_address, step_length, image_shape):
-        self.observation_space = spaces.Box(0, 255, shape=image_shape, dtype=np.uint8)
+    def __init__(self, ip_address, step_length, ob_min, ob_max, goal, threshold=0.05, goal_reward=100, max_steps=500, start_position=[-0.5, 0, -1]):
+        '''
+        goal: the goal position of the drone
+        '''
+        self.observation_space = spaces.Box(low=0, high=1, shape=(768,), dtype=np.float32)
         self.action_space = spaces.Box(low=np.array([-1, -1, -1, -0.1, -0.1, -0.1, -0.1]),
                                     high=np.array([1, 1, 1, 0.1, 0.1, 0.1, 0.1]),
                                     dtype=np.float32)
         self.viewer = None
         self.step_length = step_length
-        self.image_shape = image_shape
-
-        self.state = {
-            "position": np.zeros(3),
-            "collision": False,
-            "prev_position": np.zeros(3),
-        }
+        self.ob_min = ob_min
+        self.ob_max = ob_max
+        self.goal = goal
+        self.threshold = threshold
+        self.goal_reward = goal_reward
+        self.max_steps = max_steps
+        self.steps = 0
+        self.position = start_position
 
         # output_dir='/home/tyz/Desktop/11_777/camelmera/weights'
         trained_model_name = 'multimodal'
@@ -183,9 +186,10 @@ class AirSimDroneEnv(gym.Env):
         self.drone = airsim.MultirotorClient(ip=ip_address, timeout_value=3600)
         self.drone.confirmConnection()
         print("Vehicles: ", self.drone.listVehicles())
-
-
         self._setup_flight()
+
+        # initialize the state
+        self.state = self._get_obs()
 
 
 
@@ -195,7 +199,7 @@ class AirSimDroneEnv(gym.Env):
         self.drone.armDisarm(True)
 
         # Set home position and velocity
-        self.drone.moveToPositionAsync(-0.55265, -31.9786, -19.0225, 10).join()
+        self.drone.moveToPositionAsync(**self.start_position, 10).join()
         self.drone.moveByVelocityAsync(1, -0.67, -0.8, 5).join()
     
     def _get_obs(self):
@@ -250,31 +254,28 @@ class AirSimDroneEnv(gym.Env):
             outputs = self.vit_encoder(image_tensor,depth_tensor,lidar_tensor)
             embedding = outputs.last_hidden_states[:, 0, :]
 
-        embedding = embedding.detach().numpy()
+        observations = embedding.detach().numpy()
         print("embedding_size out of Custom ViT", embedding.shape)
-
-        observation = {
-            "embedding": embedding,
-            "position": self.state["position"]
-        }
-
-
-        return observation
+        normalized_observations = (observations - self.ob_min) / (self.ob_max - self.ob_min)
+        return normalized_observations
 
     def _compute_reward(self):
         # Define the goal state embedding
-        goal_embedding = 1 # Add the goal state embedding here
+        distance = np.linalg.norm(self.state - self.goal)
 
-        # Calculate the L2 norm between goal_embedding and current state_embedding
-        reward = -np.linalg.norm(self.state["embedding"] - goal_embedding)
-
-        # Check for collision
-        done = self.state["collision"]
+        if distance <= self.threshold:
+            # Give a large positive reward when the goal is reached
+            reward = self.goal_reward
+            done = False
+        else:
+            # Give a negative reward proportional to the distance otherwise
+            reward = -distance
+            done = True
 
         return reward, done
 
     def _do_action(self, action):
-        position_difference, quaternion_changes = self.interpret_action(action)
+        position_difference, quaternion_changes = action[:3], action[3:]
         
         # Get the current position and orientation of the drone
         drone_pose = self.drone.simGetVehiclePose()
@@ -283,7 +284,7 @@ class AirSimDroneEnv(gym.Env):
 
         # Update the position and quaternion based on the action
         new_position = current_position + position_difference
-        new_quaternion = self.apply_quaternion_changes(current_quaternion, quaternion_changes)
+        new_quaternion = self._apply_quaternion_changes(current_quaternion, quaternion_changes)
 
         # Move the drone to the new position and orientation
         self.drone.moveToPositionAsync(
@@ -296,6 +297,8 @@ class AirSimDroneEnv(gym.Env):
             ),
             True,
         )
+        # update position
+        self.position = new_position
 
     def step(self, action):
         """
@@ -305,30 +308,32 @@ class AirSimDroneEnv(gym.Env):
         info: A dictionary containing additional information about the environment. In this case, it is the current state dictionary containing "position", "collision", and "prev_position".
         """
         self._do_action(action)
-        obs = self._get_obs()
+        self.state = self._get_obs()
         reward, done = self._compute_reward()
-
-        return obs, reward, done, self.state
+        self.steps += 1
+        if self.steps >= self.max_steps:
+            done = True
+        info = ""
+        return self.state, reward, done, info
 
     def reset(self):
         self._setup_flight()
-        return self._get_obs()
+        self.steps = 0
+        self.state = self._get_obs()
+        self.position = self.start_position
+        return self.state
 
     def render(self):
-        return self._get_obs()
+        pass
 
     def close(self):
         self.drone.reset()
 
-    def interpret_action(self, action):
-        # action is a 7-dimensional vector: [dx, dy, dz, qw, qx, qy, qz]
-        quad_offset = action[:3]
-        quaternion_changes = action[3:]
-
-        return quad_offset, quaternion_changes
-
-    def apply_quaternion_changes(self, current_quaternion, quaternion_changes):
+    def _apply_quaternion_changes(self, current_quaternion, quaternion_changes):
         r1 = R.from_quat(current_quaternion)
         r2 = R.from_quat(quaternion_changes)
         new_rotation = r1 * r2
         return new_rotation.as_quat()
+    
+    def get_position(self):
+        return self.position
