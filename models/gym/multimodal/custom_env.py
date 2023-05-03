@@ -9,8 +9,8 @@ from torchvision import transforms
 from scipy.spatial.transform import Rotation as R
 import open3d as o3d
 
-from ..multimodal.custom_models.CustomViT import CustomViT
-from ..multimodal.custom_models.CustomViTMAE import CustomViTMAE
+from custom_models.CustomViT import CustomViT
+from custom_models.CustomViTMAE import CustomViTMAE
 
 from transformers import AutoImageProcessor, ViTMAEForPreTraining, ViTMAEConfig
 
@@ -157,9 +157,9 @@ class AirSimDroneEnv(gym.Env):
         self.steps = 0
         self.position = start_position
 
-        # output_dir='/home/tyz/Desktop/11_777/camelmera/weights'
-        trained_model_name = 'multimodal'
-        output_dir='/home/ubuntu/weights/' + trained_model_name
+        output_dir='C:/Users/Tianyi/Desktop/11777/camelmera/models/gym/multimodal'
+        # trained_model_name = 'multimodal'
+        # output_dir='/home/ubuntu/weights/' + trained_model_name
 
         # Initialize a new CustomViT model
         model_name = "facebook/vit-mae-base"
@@ -175,7 +175,8 @@ class AirSimDroneEnv(gym.Env):
         custom_model.vit = vit_model
 
         # Load the state_dict from the saved model
-        state_dict = torch.load(f"{output_dir}/pytorch_model.bin")
+        state_dict = torch.load(f"{output_dir}/pytorch_model.bin", map_location=torch.device('cpu'))
+
         custom_model.load_state_dict(state_dict)
 
         # don't need decoders
@@ -201,7 +202,8 @@ class AirSimDroneEnv(gym.Env):
         self.drone.armDisarm(True)
 
         # Set home position and velocity
-        self.drone.moveToPositionAsync(**self.start_position, 10).join()
+        x,y,z = self.position
+        self.drone.moveToPositionAsync(x,y,z, 10).join()
         self.drone.moveByVelocityAsync(1, -0.67, -0.8, 5).join()
     
     def _get_obs(self):
@@ -254,7 +256,8 @@ class AirSimDroneEnv(gym.Env):
         self.vit_encoder.eval()
         with torch.no_grad():
             outputs = self.vit_encoder(image_tensor,depth_tensor,lidar_tensor)
-            embedding = outputs.last_hidden_states[:, 0, :]
+            embedding = outputs.last_hidden_state[:, 0, :]
+            print(embedding.shape)
 
         observations = embedding.detach().numpy()
         print("embedding_size out of Custom ViT", embedding.shape)
