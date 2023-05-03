@@ -8,8 +8,10 @@ import timm
 from torchvision import transforms
 from scipy.spatial.transform import Rotation as R
 import open3d as o3d
-from custom_models.CustomViT import CustomViT
-from custom_models.CustomViTMAE import CustomViTMAE
+
+from ..multimodal.custom_models.CustomViT import CustomViT
+from ..multimodal.custom_models.CustomViTMAE import CustomViTMAE
+
 from transformers import AutoImageProcessor, ViTMAEForPreTraining, ViTMAEConfig
 
 import cv2
