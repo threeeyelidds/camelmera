@@ -156,6 +156,7 @@ class AirSimDroneEnv(gym.Env):
         self.max_steps = max_steps
         self.steps = 0
         self.position = start_position
+        self.start_position = start_position
 
         output_dir='C:/Users/Tianyi/Desktop/11777/camelmera/models/gym/multimodal'
         # trained_model_name = 'multimodal'
@@ -202,7 +203,7 @@ class AirSimDroneEnv(gym.Env):
         self.drone.armDisarm(True)
 
         # Set home position and velocity
-        x,y,z = self.position
+        x,y,z = self.start_position
         self.drone.moveToPositionAsync(x,y,z, 10).join()
         self.drone.moveByVelocityAsync(1, -0.67, -0.8, 5).join()
     
@@ -280,7 +281,7 @@ class AirSimDroneEnv(gym.Env):
         return reward, done
 
     def _do_action(self, action):
-        position_difference, quaternion_changes = action[:3], action[3:]
+        position_difference, quaternion_changes = action[0,:3], action[0,3:]
         
         # Get the current position and orientation of the drone
         drone_pose = self.drone.simGetVehiclePose()
@@ -288,17 +289,23 @@ class AirSimDroneEnv(gym.Env):
         current_quaternion = np.array([drone_pose.orientation.w_val, drone_pose.orientation.x_val, drone_pose.orientation.y_val, drone_pose.orientation.z_val])
 
         # Update the position and quaternion based on the action
+        print(position_difference)
+        print(current_position)
         new_position = current_position + position_difference
         new_quaternion = self._apply_quaternion_changes(current_quaternion, quaternion_changes)
 
         # Move the drone to the new position and orientation
-        self.drone.moveToPositionAsync(
-            new_position[0], new_position[1], new_position[2], self.step_length
-        ).join()
+        # self.drone.enableApiControl(True)
+        # self.drone.armDisarm(True)
+        x,y,z=new_position
+        x,y,z=float(x),float(y),float(z)
+        self.drone.moveToPositionAsync(x,y,z, 10).join()
+        a,b,c,d = new_quaternion
+        a,b,c,d = float(a),float(b),float(c),float(d)
         self.drone.simSetVehiclePose(
             airsim.Pose(
-                airsim.Vector3r(new_position[0], new_position[1], new_position[2]),
-                airsim.Quaternionr(new_quaternion[1], new_quaternion[2], new_quaternion[3], new_quaternion[0]),
+                airsim.Vector3r(x,y,z),
+                airsim.Quaternionr(b,c,d,a),
             ),
             True,
         )
