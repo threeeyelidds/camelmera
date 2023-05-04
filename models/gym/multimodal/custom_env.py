@@ -281,8 +281,8 @@ class AirSimDroneEnv(gym.Env):
         return reward, done
 
     def _do_action(self, action):
-        position_difference, quaternion_changes = action[0,:3], action[0,3:]
-        
+        clipped_action = np.clip(action, self.action_space.low, self.action_space.high)
+        position_difference, quaternion_changes = clipped_action[0,:3], clipped_action[0,3:]
         # Get the current position and orientation of the drone
         drone_pose = self.drone.simGetVehiclePose()
         current_position = np.array(drone_pose.position.to_numpy_array())
