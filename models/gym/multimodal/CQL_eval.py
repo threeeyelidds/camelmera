@@ -32,12 +32,12 @@ def evaluate_trained_model(env, model, episodes=10):
         print(f"Episode {episode + 1}: Reward = {episode_reward}")
 
         # Calculate distance (L2 norm) between final position and goal_position
-        final_state = episode_trajectory[-1][0]
-        distance = np.linalg.norm(final_state[:2] - env.goal_position[:2])
-        final_distances.append(distance)
+        # final_state = episode_trajectory[-1][0]
+        # distance = np.linalg.norm(final_state[:2]-env.goal[:2])
+        # final_distances.append(distance)
 
-        # if need to normalize: divide by total distance or total step 
-        print(f"Episode {episode + 1}: Final distance to goal = {distance}")
+        # # if need to normalize: divide by total distance or total step 
+        # print(f"Episode {episode + 1}: Final distance to goal = {distance}")
 
 
     print(f"Average reward: {np.mean(rewards)}")
@@ -61,13 +61,13 @@ def plot_trajectories(trajectories, goal_position):
 # load all observations
 all_observations = np.load('all_observations.npy', mmap_mode='r')
 # print(all_observations.shape)
-goal_position = all_observations[0]
+goal_position = all_observations[500]
 # print(all_observations[0].shape)
 # print(f'this is goal shape: {np.zeros((768,)).shape}')
 
 # ready to load
 cql = CQL.from_json('params.json')
-cql.load_model('model_310.pt')
+cql.load_model('model_4000.pt')
 
 # initialize environment
 # env = AirSimDroneEnv("127.0.0.1", -12, 17, np.zeros((768,)))
