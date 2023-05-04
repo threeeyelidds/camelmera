@@ -18,15 +18,18 @@ def evaluate_trained_model(env, model, episodes=10):
         done = False
         episode_reward = 0
         episode_trajectory = []
+        count_steps = 0
         while not done:
             # action = model.predict([state])[0]
             # state, reward, done, _ = env.step(action)
             # episode_reward += reward
             action = model.predict([state])[0]
             next_state, reward, done, _ = env.step(action)
+            count_steps+=1
             episode_trajectory.append((state, action, reward))
             state = next_state
             episode_reward += reward
+            print(f'===========step: {count_steps}===============')
         rewards.append(episode_reward)
         trajectories.append(episode_trajectory)
         print(f"Episode {episode + 1}: Reward = {episode_reward}")
@@ -61,13 +64,13 @@ def plot_trajectories(trajectories, goal_position):
 # load all observations
 all_observations = np.load('all_observations.npy', mmap_mode='r')
 # print(all_observations.shape)
-goal_position = all_observations[500]
+goal_position = all_observations[64]
 # print(all_observations[0].shape)
 # print(f'this is goal shape: {np.zeros((768,)).shape}')
 
 # ready to load
-cql = CQL.from_json('params.json')
-cql.load_model('model_4000.pt')
+cql = CQL.from_json('CQL_easy/params.json')
+cql.load_model('CQL_easy/model.pt')
 
 # initialize environment
 # env = AirSimDroneEnv("127.0.0.1", -12, 17, np.zeros((768,)))

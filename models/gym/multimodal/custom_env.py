@@ -143,8 +143,8 @@ class AirSimDroneEnv(gym.Env):
         goal: the goal position of the drone
         '''
         self.observation_space = spaces.Box(low=0, high=1, shape=(768,), dtype=np.float32)
-        self.action_space = spaces.Box(low=np.array([-1, -1, -1, -0.1, -0.1, -0.1, -0.1]),
-                                    high=np.array([1, 1, 1, 0.1, 0.1, 0.1, 0.1]),
+        self.action_space = spaces.Box(low=np.array([-0.5, -0.5, -0.5, -0.1, -0.1, -0.1, -0.1]),
+                                    high=np.array([0.5, 0.5, 0.5, 0.1, 0.1, 0.1, 0.1]),
                                     dtype=np.float32)
         self.viewer = None
         self.step_length = step_length
@@ -272,11 +272,11 @@ class AirSimDroneEnv(gym.Env):
         if distance <= self.threshold:
             # Give a large positive reward when the goal is reached
             reward = self.goal_reward
-            done = False
+            done = True
         else:
             # Give a negative reward proportional to the distance otherwise
             reward = -distance
-            done = True
+            done = False
 
         return reward, done
 
