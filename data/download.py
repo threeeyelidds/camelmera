@@ -30,10 +30,7 @@ def download():
         path_lists = blob.name.split('/')
         if path_lists[0] != 'AbandonedFactoryExposure':
             continue 
-        if int(path_lists[2][-1])<5:
-            # print(int(path_lists[2][-1]))
-            continue
-        if len(path_lists) > 3 and path_lists[1] == "Data_easy" and path_lists[3] in path_combinations:
+        if len(path_lists) > 3 and path_lists[1] == "Data_hard" and path_lists[3] in path_combinations:
             print(blob.name) #e.g., AbandonedCableExposure/Data_easy/P000/depth_lcam_fish/000860_lcam_fish_depth.png
             blob_client = blob_container_client.get_blob_client(blob.name)
 
