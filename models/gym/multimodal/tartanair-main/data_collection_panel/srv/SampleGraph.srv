@@ -1,0 +1,6 @@
+string output_dir
+int32 edge_num
+int32 min_dist_thresh
+int32 max_dist_thresh
+---
+bool success_flag

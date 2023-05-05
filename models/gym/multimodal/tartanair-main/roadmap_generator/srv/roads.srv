@@ -1,0 +1,5 @@
+geometry_msgs/Pose init
+geometry_msgs/PoseArray goallist
+---
+geometry_msgs/PoseArray[] roadmaplist
+

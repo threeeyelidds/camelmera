@@ -1,0 +1,3 @@
+geometry_msgs/PoseArray roadmap
+---
+geometry_msgs/PoseArray smooth_roadmap

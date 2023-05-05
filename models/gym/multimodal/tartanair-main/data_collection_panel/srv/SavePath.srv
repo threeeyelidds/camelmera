@@ -1,0 +1,3 @@
+int32 save_path_flag
+---
+bool success_flag

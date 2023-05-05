@@ -1,0 +1,9 @@
+int32 node_num
+float64 node_range_xmin
+float64 node_range_xmax
+float64 node_range_ymin
+float64 node_range_ymax
+float64 node_range_zmin
+float64 node_range_zmax
+---
+bool success_flag

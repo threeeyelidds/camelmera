@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<launch>
+   <!--launch the octomap server-->
+ 	<node pkg="expo_base" type="expo_base" name="expo_base" output="screen" > <!--launch-prefix="xterm -e gdb -args"-->
+		<param name="frame_id" type="string" value="/world"/>
+		<param name="resolution" type="double" value="0.125"/>
+		<param name="height_map" type="bool" value="true"/> <!-- used for publishing ros marker -->
+    <param name="neighbor_count_thresh" type="int" value="3"/>
+  	OldBrickHouse
+  	<param name="sensor_model/max_range" type="double" value="9.99"/>
+  	<param name="sensor_model/hit" type="double" value="0.7"/>
+  	<param name="sensor_model/miss" type="double" value="0.47"/>
+  	<param name="sensor_model/min" type="double" value="0.12"/>
+  	<param name="sensor_model/max" type="double" value="0.97"/>
+
+	    <param name="bbx_depth" type="int" value="15"/>
+    <param name="map_x_min" type="double" value="-16.0"/>
+    <param name="map_x_max" type="double" value= "10.0"/>
+    <param name="map_y_min" type="double" value="-15.0"/>
+    <param name="map_y_max" type="double" value= "12.0"/>
+    <param name="map_z_min" type="double" value= "-7"/>
+    <param name="map_z_max" type="double" value=  "2"/>
+  
+    <param name="cost_inflation_iter" type="int" value="3"/>
+    <param name="cost_inflation_val" type="double" value="5"/>
+
+  	<param name="map_file" type="string" value=""/>
+  	<!--/home/zhudelong/CodeStation/ws_exploration/miniforest/miniforest_refined.ot-->
+
+    <param name="filter_point_cloud" type="bool" value="false"/> 
+    <param name="filter_mean_k" type="int" value="20"/>
+    <param name="filter_std_thresh" type="double" value="2.0"/> 
+
+  </node>
+  
+</launch>

@@ -1,0 +1,4 @@
+<!-- -->
+<launch>
+  <node name="generated_environment" pkg="ompl" type="generated_environment"/> 
+</launch>

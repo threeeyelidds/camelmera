@@ -1,0 +1,3 @@
+geometry_msgs/Point globalpoint
+---
+std_msgs/Bool state

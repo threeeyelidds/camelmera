@@ -1,0 +1,13 @@
+fisheye:
+  height: 1000
+  width: 1000
+  xi: -0.2
+  alpha: 0.6
+  fx: 235
+  fy: 235
+  cx: 500
+  cy: 500
+  fov_degree: 195
+equirect:
+  height: 1024
+  width: 2048

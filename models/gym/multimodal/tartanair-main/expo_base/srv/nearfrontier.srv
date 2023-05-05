@@ -1,0 +1,4 @@
+geometry_msgs/Point robotpos
+---
+geometry_msgs/Point nearfrontier
+geometry_msgs/Point safepose

@@ -1,0 +1,6 @@
+<launch>
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find data_collection_panel)/rviz/config.rviz" output="screen" />
+    <node pkg="data_collection_panel" type="interactive_cuboid_selection_node" name ="interactive_cuboid_selection_node" output="screen" />
+
+</launch>

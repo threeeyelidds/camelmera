@@ -1,0 +1,7 @@
+geometry_msgs/Point low_bound
+geometry_msgs/Point high_bound
+---
+std_msgs/Float32 resolution
+geometry_msgs/Point map_orig
+geometry_msgs/Point map_size
+std_msgs/Float32[] dist_map

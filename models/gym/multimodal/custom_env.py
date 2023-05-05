@@ -157,6 +157,7 @@ class AirSimDroneEnv(gym.Env):
         self.steps = 0
         self.position = start_position
         self.start_position = start_position
+        self.goal_xyz_coordinates = np.array([1.830941200256347656e+01 ,-9.911462664604187012e-01, -2.512080669403076172e+00])
 
         output_dir='C:/Users/Tianyi/Desktop/11777/camelmera/models/gym/multimodal'
         # trained_model_name = 'multimodal'

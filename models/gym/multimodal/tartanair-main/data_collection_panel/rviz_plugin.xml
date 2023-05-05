@@ -1,0 +1,9 @@
+<library path="lib/libdata_panel">
+
+  <class name ="dataCollectionPanel" type="rviz_panel::dataCollectionPanel" base_class_type="rviz::Panel">
+    <description>
+      A simple panel widget for Tartan Air.
+    </description>
+  </class>
+
+</library>

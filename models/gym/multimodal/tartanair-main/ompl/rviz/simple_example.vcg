@@ -1,0 +1,56 @@
+Background\ ColorB=1
+Background\ ColorG=1
+Background\ ColorR=1
+Camera\ Config=1.5048 4.70767 35.4336 9.27741 4.0187 -1.10429
+Camera\ Type=rviz::OrbitViewController
+Fixed\ Frame=/world
+Graph.Enabled=1
+Graph.Marker\ Topic=/simple_example/graph
+Graph.Queue\ Size=100
+Graph.graph=1
+Grid.Alpha=0.5
+Grid.Cell\ Size=1
+Grid.ColorB=0.5
+Grid.ColorG=0.5
+Grid.ColorR=0.5
+Grid.Enabled=1
+Grid.Line\ Style=0
+Grid.Line\ Width=0.03
+Grid.Normal\ Cell\ Count=0
+Grid.OffsetX=0
+Grid.OffsetY=0
+Grid.OffsetZ=0
+Grid.Plane=0
+Grid.Plane\ Cell\ Count=100
+Grid.Reference\ Frame=<Fixed Frame>
+Origin.Enabled=1
+Origin.Length=0.4
+Origin.Radius=0.03
+Origin.Reference\ Frame=<Fixed Frame>
+Path.Enabled=1
+Path.Marker\ Topic=/simple_example/path
+Path.Queue\ Size=100
+Path.path=1
+Property\ Grid\ Splitter=799,78
+Property\ Grid\ State=expanded=.Global Options,Grid.Enabled,Origin.Enabled,Path.Enabled,Graph.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d000003bffc0200000001fb000000100044006900730070006c0061007900730000000000000003bf000000ee00ffffff00000001000001310000030bfc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073000000001d000000c80000006700fffffffb0000000a00560069006500770073000000001d000001f4000000bb00fffffffb0000001200530065006c0065006300740069006f006e000000001d0000030b0000006700ffffff000000030000073d0000003efc0100000001fb0000000800540069006d006501000000000000073d000002bf00ffffff0000073d000003bf00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
+Target\ Frame=<Fixed Frame>
+Tool\ 2D\ Nav\ GoalTopic=/move_base_simple/goal
+Tool\ 2D\ Pose\ EstimateTopic=initialpose
+[Display0]
+ClassName=rviz::GridDisplay
+Name=Grid
+[Display1]
+ClassName=rviz::AxesDisplay
+Name=Origin
+[Display2]
+ClassName=rviz::MarkerDisplay
+Name=Path
+[Display3]
+ClassName=rviz::MarkerDisplay
+Name=Graph
+[Window]
+Height=1063
+Width=1869
+X=54
+Y=-23

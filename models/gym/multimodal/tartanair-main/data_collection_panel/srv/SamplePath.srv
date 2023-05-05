@@ -1,0 +1,8 @@
+string output_dir
+string ros_path_folder
+int32 sample_cycle_mode
+int32 cycle_min_nodes
+int32 cycle_max_nodes
+---
+bool success_flag
+

@@ -1,0 +1,10 @@
+std_msgs/Int32 pointnum
+std_msgs/Float64 range_minx
+std_msgs/Float64 range_maxx
+std_msgs/Float64 range_miny
+std_msgs/Float64 range_maxy
+std_msgs/Float64 range_minz
+std_msgs/Float64 range_maxz
+---
+std_msgs/Int32 status
+geometry_msgs/PoseArray nodes

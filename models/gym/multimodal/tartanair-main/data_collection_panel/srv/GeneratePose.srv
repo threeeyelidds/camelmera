@@ -1,0 +1,16 @@
+string data_dir
+string input_folder
+string output_folder
+float64 vel_max
+float64 vel_min
+float64 acc_max
+float64 rand_degree
+int32 smooth_count
+float64 yaw_max
+float64 yaw_min
+float64 pitch_max
+float64 pitch_min
+float64 roll_max
+float64 roll_min
+---
+bool success_flag

@@ -1,0 +1,5 @@
+string output_dir
+string ros_path_folder
+---
+bool success_flag
+

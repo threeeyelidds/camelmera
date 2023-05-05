@@ -1,0 +1,4 @@
+geometry_msgs/Pose init
+geometry_msgs/Pose goal
+---
+geometry_msgs/PoseArray roadmap
